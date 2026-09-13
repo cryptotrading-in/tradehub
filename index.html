@@ -11,11 +11,11 @@
     <aside class="sidebar" aria-label="Client navigation">
       <div class="brand">TRADE<span>HUB</span></div>
       <nav class="shell-nav">
-        <button class="nav-item active" type="button">Home</button>
-        <button class="nav-item" type="button">Rounds</button>
-        <button class="nav-item" type="button">Wallet</button>
-        <button class="nav-item" type="button">Orders</button>
-        <button class="nav-item" type="button">Account</button>
+        <button class="nav-item active" type="button" data-route="/">Home</button>
+        <button class="nav-item" type="button" data-route="/rounds">Rounds</button>
+        <button class="nav-item" type="button" data-route="/wallet">Wallet</button>
+        <button class="nav-item" type="button" data-route="/orders">Orders</button>
+        <button class="nav-item" type="button" data-route="/account">Account</button>
       </nav>
     </aside>
     <div class="shell-main">
@@ -27,17 +27,55 @@
       <main class="shell-content">
         <section class="shell-hero glass-card">
           <span class="label">Client shell</span>
-          <h2>Your trading experience starts here.</h2>
-          <p>UI structure only. No authentication, wallet, trading, database, or business logic is connected yet.</p>
+          <h2 id="page-title">Your trading experience starts here.</h2>
+          <p id="page-description">UI structure only. No authentication, wallet, trading, database, or business logic is connected yet.</p>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
-        <button class="nav-item active" type="button">Home</button>
-        <button class="nav-item" type="button">Rounds</button>
-        <button class="nav-item" type="button">Wallet</button>
-        <button class="nav-item" type="button">Account</button>
+        <button class="nav-item active" type="button" data-route="/">Home</button>
+        <button class="nav-item" type="button" data-route="/rounds">Rounds</button>
+        <button class="nav-item" type="button" data-route="/wallet">Wallet</button>
+        <button class="nav-item" type="button" data-route="/account">Account</button>
       </nav>
     </div>
   </div>
+<script>
+(() => {
+  const pages = {
+    '/': ['Your trading experience starts here.', 'UI structure only. No authentication, wallet, trading, database, or business logic is connected yet.'],
+    '/rounds': ['Trading rounds', 'Rounds workspace is ready for the next feature step.'],
+    '/wallet': ['Wallet', 'Wallet workspace is ready for the next feature step.'],
+    '/orders': ['Orders', 'Orders workspace is ready for the next feature step.'],
+    '/account': ['Account', 'Account workspace is ready for the next feature step.']
+  };
+  const normalize = path => {
+    if (!path || path === '/index.html') return '/';
+    if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
+    return path;
+  };
+  const render = (path, push = false) => {
+    path = normalize(path);
+    const page = pages[path] || pages['/'];
+    if (!pages[path] && push) {
+      history.replaceState({}, '', '/');
+      path = '/';
+    }
+    document.getElementById('page-title').textContent = page[0];
+    document.getElementById('page-description').textContent = page[1];
+    document.querySelectorAll('[data-route]').forEach(button => {
+      button.classList.toggle('active', normalize(button.dataset.route) === path);
+    });
+  };
+  document.querySelectorAll('[data-route]').forEach(button => {
+    button.addEventListener('click', () => {
+      const path = normalize(button.dataset.route);
+      if (path !== normalize(location.pathname)) history.pushState({}, '', path);
+      render(path);
+    });
+  });
+  window.addEventListener('popstate', () => render(location.pathname));
+  render(location.pathname, true);
+})();
+</script>
 </body>
 </html>
