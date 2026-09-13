@@ -35,6 +35,17 @@ async function ensureDepositTables(env) {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (deposit_id) REFERENCES deposit_requests(id) ON DELETE CASCADE
   )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS first_deposit_bonuses (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL UNIQUE,
+    deposit_id TEXT NOT NULL UNIQUE,
+    deposit_amount REAL NOT NULL,
+    bonus_percent REAL NOT NULL,
+    bonus_amount REAL NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (deposit_id) REFERENCES deposit_requests(id) ON DELETE CASCADE
+  )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_user_created ON deposit_requests(user_id, created_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_status_created ON deposit_requests(status, created_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_wallet_deposit_transactions_user_created ON wallet_deposit_transactions(user_id, created_at DESC)').run();
@@ -141,20 +152,34 @@ route('POST', '/api/admin/deposits/action', async ({ request, env }) => {
     if (!rejected.meta?.changes) return Response.json({ ok: false, error: 'Deposit request was already reviewed' }, { status: 409 });
     return Response.json({ ok: true, status: 'Rejected' });
   }
+
   const wallet = await env.DB.prepare('SELECT balance FROM wallet_accounts WHERE user_id = ? LIMIT 1').bind(deposit.user_id).first();
   const current = Number(wallet?.balance || 0);
-  const next = current + Number(deposit.amount);
+  const bonusSettings = await env.DB.prepare('SELECT bonus_enabled, bonus_percent FROM admin_settings WHERE id = 1').first();
+  const priorBonus = await env.DB.prepare('SELECT id FROM first_deposit_bonuses WHERE user_id = ? LIMIT 1').bind(deposit.user_id).first();
+  const priorApproved = await env.DB.prepare("SELECT id FROM deposit_requests WHERE user_id = ? AND status = 'Approved' LIMIT 1").bind(deposit.user_id).first();
+  const bonusEnabled = Boolean(bonusSettings?.bonus_enabled);
+  const bonusPercent = Number(bonusSettings?.bonus_percent || 0);
+  const bonusAmount = !priorBonus && !priorApproved && bonusEnabled && bonusPercent > 0 ? Number((Number(deposit.amount) * bonusPercent / 100).toFixed(2)) : 0;
+  const credited = Number(deposit.amount) + bonusAmount;
+  const next = current + credited;
   const txId = crypto.randomUUID();
   const statements = [
     env.DB.prepare(`UPDATE deposit_requests SET status = 'Approved', rejection_reason = NULL, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'Pending'`).bind(now, guard.admin.id, id),
-    wallet ? env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, deposit.user_id) : env.DB.prepare('INSERT INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, ?, ?)').bind(deposit.user_id, Number(deposit.amount), now),
+    wallet ? env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, deposit.user_id) : env.DB.prepare('INSERT INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, ?, ?)').bind(deposit.user_id, credited, now),
     env.DB.prepare(`INSERT INTO wallet_deposit_transactions (id, user_id, deposit_id, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, 'Completed', ?)`).bind(txId, deposit.user_id, deposit.id, Number(deposit.amount), next, now)
   ];
+  if (bonusAmount > 0) {
+    statements.push(env.DB.prepare(`INSERT OR IGNORE INTO first_deposit_bonuses (id, user_id, deposit_id, deposit_amount, bonus_percent, bonus_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .bind(crypto.randomUUID(), deposit.user_id, deposit.id, Number(deposit.amount), bonusPercent, bonusAmount, now));
+    statements.push(env.DB.prepare(`INSERT INTO wallet_activity (id, user_id, reference_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, 'BONUS', ?, ?, 'Completed', ?)`)
+      .bind(crypto.randomUUID(), deposit.user_id, deposit.id, bonusAmount, next, now));
+  }
   try {
     await env.DB.batch(statements);
   } catch (error) {
     console.error('Deposit approval transaction failed', error);
     return Response.json({ ok: false, error: 'Deposit approval could not be completed safely' }, { status: 500 });
   }
-  return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), balance: next });
+  return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), bonus: bonusAmount, balance: next });
 });
