@@ -2,6 +2,7 @@ import { route } from './router.js';
 import { clearSessionCookie, createSession, getSession, hasTrustedOrigin, isStateChangingRequest, revokeSession, sessionCookieFor } from './session.js';
 import { hashSecret, normalizeEmail, normalizeUsername, validateSignupInput, verifySecret } from './auth.js';
 import './rounds.js';
+import './deposits.js';
 import './admin-auth.js';
 
 route('GET', '/api/health', async ({ env }) => {
