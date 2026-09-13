@@ -1,10 +1,12 @@
-const CACHE_NAME = 'tradehub-shell-v2';
+const CACHE_NAME = 'tradehub-shell-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/styles.css',
   '/manifest.webmanifest',
-  '/icons/nexus.svg'
+  '/icons/nexus.svg',
+  '/icons/nexus-192.svg',
+  '/icons/nexus-512.svg'
 ];
 
 self.addEventListener('install', event => {
