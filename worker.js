@@ -19,18 +19,7 @@ export default {
         method: 'GET',
         headers: request.headers,
       });
-      const response = await env.ASSETS.fetch(indexRequest);
-      if (!response.ok) return response;
-      let html = await response.text();
-      // Force the current Account module instead of a cached older copy.
-      html = html.replace('src="/withdrawal-ui.js"', 'src="/withdrawal-ui.js?v=20260914-account"');
-      // Remove the temporary placeholder copy from the locked Account shell.
-      html = html.replace("['/account',['Account','Account workspace is ready.']]", "['/account',['Account','']]");
-      const routeBridge = `<script>(function(){function sync(){var account=location.pathname==='/account'||location.pathname==='/account/';['profilePanel','securityPanel','historyPanel','logoutPanel'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=account?'':'none'});}var push=history.pushState;history.pushState=function(){var r=push.apply(this,arguments);window.dispatchEvent(new PopStateEvent('popstate'));return r};window.addEventListener('popstate',function(){setTimeout(sync,60)});document.addEventListener('DOMContentLoaded',sync);sync();})();</script>`;
-      return new Response(html.replace('</body>', routeBridge + '</body>'), {
-        status: response.status,
-        headers: response.headers,
-      });
+      return env.ASSETS.fetch(indexRequest);
     }
 
     return env.ASSETS.fetch(request);
