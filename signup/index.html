@@ -40,6 +40,7 @@
         <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" /></label>
         <label>Confirm Password<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128" /></label>
         <label>Recovery PIN<input name="recoveryPin" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{4,12}" minlength="4" maxlength="12" /></label>
+        <label>Referral Code (Optional)<input name="referralCode" autocomplete="off" maxlength="32" placeholder="Enter referral code" /></label>
         <label class="terms"><input name="termsAccepted" type="checkbox" required /><span>I agree to the Tradehub Terms &amp; Conditions.</span></label>
         <p id="signup-message" class="auth-message" aria-live="polite"></p>
         <button id="signup-submit" class="auth-button" type="submit">Create Account</button>
@@ -53,39 +54,53 @@
   const form = document.getElementById('signup-form');
   const button = document.getElementById('signup-submit');
   const message = document.getElementById('signup-message');
+  const referralInput = form.elements.referralCode;
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref) referralInput.value = ref.trim().toUpperCase();
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     message.className = 'auth-message';
     message.textContent = '';
-
     if (!form.reportValidity()) return;
-
     const data = Object.fromEntries(new FormData(form).entries());
     data.termsAccepted = form.elements.termsAccepted.checked;
-
+    data.referralCode = String(data.referralCode || '').trim().toUpperCase();
     if (data.password !== data.confirmPassword) {
       message.className = 'auth-message error';
       message.textContent = 'Passwords do not match.';
       return;
     }
-
+    if (data.referralCode) {
+      try {
+        const vr = await fetch('/api/referral/validate?code=' + encodeURIComponent(data.referralCode), {credentials:'same-origin',cache:'no-store'});
+        const vd = await vr.json();
+        if (!vr.ok || !vd.ok || !vd.valid) {
+          message.className = 'auth-message error';
+          message.textContent = 'Invalid referral code.';
+          return;
+        }
+      } catch {
+        message.className = 'auth-message error';
+        message.textContent = 'Referral code could not be verified. Please try again.';
+        return;
+      }
+    }
     button.disabled = true;
     button.textContent = 'Creating Account...';
-
     try {
       const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
+        method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
       });
       const result = await response.json();
-
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Unable to create account.');
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Unable to create account.');
+      if (data.referralCode) {
+        const rr = await fetch('/api/referral/register', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({referralCode:data.referralCode})});
+        const rd = await rr.json();
+        if (!rr.ok || !rd.ok) throw new Error(rd.error || 'Referral could not be linked.');
+      } else {
+        await fetch('/api/referral/register', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});
       }
-
       message.className = 'auth-message success';
       message.textContent = 'Account created successfully. Redirecting...';
       setTimeout(() => { window.location.href = '/'; }, 700);
