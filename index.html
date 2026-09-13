@@ -16,11 +16,9 @@
     .auth-cta.is-visible{display:flex}
     .auth-cta a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:700}
     .auth-cta-primary{background:#7c6cff;color:#fff}.auth-cta-secondary{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#f5f7fb}
-    .auth-user{display:none;margin-top:20px}
-    .auth-user.is-visible{display:block}
-    .auth-user strong{color:#f5f7fb}
-    .auth-status{display:none;margin-top:10px;font-size:13px;color:#29c98a;font-weight:700}
-    .auth-status.is-visible{display:block}
+    .auth-status{display:none;margin-left:12px;font-size:13px;color:#29c98a;font-weight:700;white-space:nowrap}
+    .auth-status.is-visible{display:inline-flex;align-items:center}
+    .auth-status::first-letter{font-size:18px}
   </style>
 </head>
 <body class="shell-page">
@@ -38,7 +36,7 @@
       <header class="topbar">
         <button class="mobile-menu" type="button" aria-label="Open menu">☰</button>
         <div><p class="eyebrow">TRADEHUB</p><h1>Premium trading workspace</h1></div>
-        <div class="topbar-status"><button id="install-app-button" class="install-app-button" type="button" aria-label="Install Tradehub">Install</button><span class="status status-live">Ready</span></div>
+        <div class="topbar-status"><button id="install-app-button" class="install-app-button" type="button" aria-label="Install Tradehub">Install</button><span class="status status-live">Ready</span><span id="auth-status" class="auth-status">● Account Active</span></div>
       </header>
       <main class="shell-content">
         <section class="shell-hero glass-card">
@@ -49,8 +47,6 @@
             <a class="auth-cta-primary" href="/signup/">Create Account</a>
             <a class="auth-cta-secondary" href="/signin/">Sign In</a>
           </div>
-          <p id="auth-user" class="auth-user">Welcome, <strong id="auth-user-name"></strong>.</p>
-          <p id="auth-status" class="auth-status">● Account Active</p>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
@@ -98,13 +94,10 @@
   render(location.pathname, true);
 
   const authCta = document.getElementById('auth-cta');
-  const authUser = document.getElementById('auth-user');
-  const authUserName = document.getElementById('auth-user-name');
   const authStatus = document.getElementById('auth-status');
   const pageTitle = document.getElementById('page-title');
 
   authCta.classList.remove('is-visible');
-  authUser.classList.remove('is-visible');
   authStatus.classList.remove('is-visible');
 
   const loadSession = async () => {
@@ -114,23 +107,18 @@
       if (response.ok && result.ok && result.authenticated) {
         const name = result.session?.fullName || result.session?.username;
         if (name) {
-          authUserName.textContent = name;
-          authUser.classList.add('is-visible');
           authStatus.classList.add('is-visible');
           if (normalize(location.pathname) === '/') pageTitle.textContent = `Welcome, ${name}`;
         } else {
-          authUser.classList.remove('is-visible');
           authStatus.classList.remove('is-visible');
           authCta.classList.add('is-visible');
         }
         authCta.classList.remove('is-visible');
       } else {
-        authUser.classList.remove('is-visible');
         authStatus.classList.remove('is-visible');
         authCta.classList.add('is-visible');
       }
     } catch {
-      authUser.classList.remove('is-visible');
       authStatus.classList.remove('is-visible');
       authCta.classList.add('is-visible');
     }
