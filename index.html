@@ -65,6 +65,7 @@
     '/wallet': ['Wallet', 'Wallet workspace is ready for the next feature step.'],
     '/account': ['Account', 'Account workspace is ready for the next feature step.']
   };
+  let authenticatedUserName = null;
   const normalize = path => {
     if (!path || path === '/index.html') return '/';
     if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
@@ -77,7 +78,8 @@
       history.replaceState({}, '', '/');
       path = '/';
     }
-    document.getElementById('page-title').textContent = page[0];
+    const title = path === '/' && authenticatedUserName ? `Welcome, ${authenticatedUserName}` : page[0];
+    document.getElementById('page-title').textContent = title;
     document.getElementById('page-description').textContent = page[1];
     document.querySelectorAll('[data-route]').forEach(button => {
       button.classList.toggle('active', normalize(button.dataset.route) === path);
@@ -107,18 +109,22 @@
       if (response.ok && result.ok && result.authenticated) {
         const name = result.session?.fullName || result.session?.username;
         if (name) {
+          authenticatedUserName = name;
           authStatus.classList.add('is-visible');
           if (normalize(location.pathname) === '/') pageTitle.textContent = `Welcome, ${name}`;
         } else {
+          authenticatedUserName = null;
           authStatus.classList.remove('is-visible');
           authCta.classList.add('is-visible');
         }
         authCta.classList.remove('is-visible');
       } else {
+        authenticatedUserName = null;
         authStatus.classList.remove('is-visible');
         authCta.classList.add('is-visible');
       }
     } catch {
+      authenticatedUserName = null;
       authStatus.classList.remove('is-visible');
       authCta.classList.add('is-visible');
     }
