@@ -1,6 +1,9 @@
 name: Tradehub D1 Migration
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirm:
