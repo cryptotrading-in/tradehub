@@ -78,6 +78,12 @@
   });
   window.addEventListener('popstate', () => render(location.pathname));
   render(location.pathname, true);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
 })();
 </script>
 </body>
