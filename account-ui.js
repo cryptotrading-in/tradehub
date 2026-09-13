@@ -11,8 +11,12 @@ function style(){
 function ensureMenuLogout(){
  const sidebar=document.querySelector('.sidebar');
  if(!sidebar||sidebar.querySelector('[data-account-logout]'))return;
+ const nav=sidebar.querySelector('.shell-nav');
+ if(!nav)return;
+ const r=document.createElement('button');r.className='nav-item';r.type='button';r.textContent='Referral';r.dataset.accountReferral='1';r.onclick=()=>{location.href='/referral/'};
+ nav.appendChild(r);
  const b=document.createElement('button');b.className='nav-item';b.type='button';b.textContent='Logout';b.dataset.accountLogout='1';b.onclick=logout;
- sidebar.querySelector('.shell-nav')?.appendChild(b);
+ nav.appendChild(b);
 }
 function ensureSupport(){
  const sidebar=document.querySelector('.sidebar');
