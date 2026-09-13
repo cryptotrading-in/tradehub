@@ -7,8 +7,8 @@ async function ensureReferralTables(env) {
   await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_referral_profiles_referrer ON referral_profiles(referred_by_user_id)`).run();
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_records (id TEXT PRIMARY KEY, referrer_id TEXT NOT NULL, referred_user_id TEXT NOT NULL UNIQUE, referral_code TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Qualified','Rewarded','Disqualified','Cancelled')), qualifying_deposit_id TEXT, qualifying_amount REAL NOT NULL DEFAULT 0, reward_amount REAL NOT NULL DEFAULT 0, qualified_at INTEGER, rewarded_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE CASCADE)`).run();
   await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_referral_records_referrer_created ON referral_records(referrer_id, created_at DESC)`).run();
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_settings (id INTEGER PRIMARY KEY CHECK (id = 1), enabled INTEGER NOT NULL DEFAULT 0, reward_percent REAL NOT NULL DEFAULT 0, minimum_qualifying_deposit REAL NOT NULL DEFAULT 0, maximum_reward REAL NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)`).run();
-  await env.DB.prepare(`INSERT OR IGNORE INTO referral_settings (id, updated_at) VALUES (1, ?)`).bind(Math.floor(Date.now() / 1000)).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_settings (id INTEGER PRIMARY KEY CHECK (id = 1), enabled INTEGER NOT NULL DEFAULT 1, reward_percent REAL NOT NULL DEFAULT 10, minimum_qualifying_deposit REAL NOT NULL DEFAULT 50, maximum_reward REAL NOT NULL DEFAULT 5, updated_at INTEGER NOT NULL)`).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO referral_settings (id, enabled, reward_percent, minimum_qualifying_deposit, maximum_reward, updated_at) VALUES (1, 1, 10, 50, 5, ?)`).bind(Math.floor(Date.now() / 1000)).run();
 }
 function makeCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(5));
@@ -33,19 +33,35 @@ export async function getOrCreateProfile(env, userId) {
 }
 export async function processReferralQualification(env, referredUserId, depositId, amount, now = Math.floor(Date.now() / 1000)) {
   await ensureReferralTables(env);
-  const relation = await env.DB.prepare(`SELECT rp.referred_by_user_id AS referrer_id, rp.referral_code, rr.id AS record_id, rr.status FROM referral_profiles rp LEFT JOIN referral_records rr ON rr.referred_user_id = rp.user_id WHERE rp.user_id = ? LIMIT 1`).bind(referredUserId).first();
-  if (!relation?.referrer_id || (relation.status && relation.status !== 'Pending')) return { qualified: false, reward: 0 };
+  const relation = await env.DB.prepare(`SELECT rp.referred_by_user_id AS referrer_id, rr.id AS record_id, rr.status FROM referral_profiles rp LEFT JOIN referral_records rr ON rr.referred_user_id = rp.user_id WHERE rp.user_id = ? LIMIT 1`).bind(referredUserId).first();
+  if (!relation?.referrer_id || relation.status !== 'Pending') return { qualified: false, reward: 0 };
   const settings = await env.DB.prepare('SELECT enabled, reward_percent, minimum_qualifying_deposit, maximum_reward FROM referral_settings WHERE id = 1 LIMIT 1').first();
   if (!settings?.enabled) return { qualified: false, reward: 0 };
-  const minDeposit = Number(settings.minimum_qualifying_deposit || 0);
+  const minDeposit = Number(settings.minimum_qualifying_deposit || 50);
   if (Number(amount) < minDeposit) return { qualified: false, reward: 0 };
-  const rewardPercent = Number(settings.reward_percent || 0);
+  const rewardPercent = Number(settings.reward_percent || 10);
   let reward = Number((Number(amount) * rewardPercent / 100).toFixed(2));
-  const maxReward = Number(settings.maximum_reward || 0);
+  const maxReward = Number(settings.maximum_reward || 5);
   if (maxReward > 0) reward = Math.min(reward, maxReward);
+  if (reward <= 0) return { qualified: false, reward: 0 };
   const recordId = relation.record_id || crypto.randomUUID();
-  await env.DB.prepare(`INSERT INTO referral_records (id, referrer_id, referred_user_id, referral_code, status, qualifying_deposit_id, qualifying_amount, reward_amount, qualified_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'Qualified', ?, ?, ?, ?, ?, ?) ON CONFLICT(referred_user_id) DO UPDATE SET status='Qualified', qualifying_deposit_id=excluded.qualifying_deposit_id, qualifying_amount=excluded.qualifying_amount, reward_amount=excluded.reward_amount, qualified_at=excluded.qualified_at, updated_at=excluded.updated_at`).bind(recordId, relation.referrer_id, referredUserId, relation.referral_code, depositId, Number(amount), reward, now, now, now).run();
-  return { qualified: true, reward };
+  try {
+    await env.DB.prepare('INSERT OR IGNORE INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, 0, ?)').bind(relation.referrer_id, now).run();
+    const wallet = await env.DB.prepare('SELECT balance FROM wallet_accounts WHERE user_id = ? LIMIT 1').bind(relation.referrer_id).first();
+    const current = Number(wallet?.balance || 0);
+    const next = current + reward;
+    const activityId = crypto.randomUUID();
+    const updated = await env.DB.batch([
+      env.DB.prepare(`UPDATE referral_records SET status='Rewarded', qualifying_deposit_id=?, qualifying_amount=?, reward_amount=?, qualified_at=?, rewarded_at=?, updated_at=? WHERE id=? AND status='Pending'`).bind(depositId, Number(amount), reward, now, now, now, recordId),
+      env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, relation.referrer_id),
+      env.DB.prepare(`INSERT INTO wallet_activity (id, user_id, reference_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, 'REFERRAL_BONUS', ?, ?, 'Completed', ?)`).bind(activityId, relation.referrer_id, recordId, reward, next, now)
+    ]);
+    if (!updated?.[0]?.meta?.changes) return { qualified: false, reward: 0 };
+    return { qualified: true, reward };
+  } catch (error) {
+    console.error('Referral reward failed', error);
+    return { qualified: false, reward: 0 };
+  }
 }
 route('GET', '/api/referral/validate', async ({ request, env }) => {
   const code = new URL(request.url).searchParams.get('code')?.trim().toUpperCase() || '';
