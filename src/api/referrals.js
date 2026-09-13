@@ -9,6 +9,8 @@ async function ensureReferralTables(env) {
   await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_referral_records_referrer_created ON referral_records(referrer_id, created_at DESC)`).run();
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_settings (id INTEGER PRIMARY KEY CHECK (id = 1), enabled INTEGER NOT NULL DEFAULT 1, reward_percent REAL NOT NULL DEFAULT 10, minimum_qualifying_deposit REAL NOT NULL DEFAULT 50, maximum_reward REAL NOT NULL DEFAULT 5, updated_at INTEGER NOT NULL)`).run();
   await env.DB.prepare(`INSERT OR IGNORE INTO referral_settings (id, enabled, reward_percent, minimum_qualifying_deposit, maximum_reward, updated_at) VALUES (1, 1, 10, 50, 5, ?)`).bind(Math.floor(Date.now() / 1000)).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_rewards (id TEXT PRIMARY KEY, referral_record_id TEXT NOT NULL UNIQUE, referrer_id TEXT NOT NULL, referred_user_id TEXT NOT NULL, deposit_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY (referral_record_id) REFERENCES referral_records(id) ON DELETE CASCADE)`).run();
+  await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer_created ON referral_rewards(referrer_id, created_at DESC)`).run();
 }
 function makeCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(5));
@@ -47,16 +49,15 @@ export async function processReferralQualification(env, referredUserId, depositI
   const recordId = relation.record_id || crypto.randomUUID();
   try {
     await env.DB.prepare('INSERT OR IGNORE INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, 0, ?)').bind(relation.referrer_id, now).run();
-    const wallet = await env.DB.prepare('SELECT balance FROM wallet_accounts WHERE user_id = ? LIMIT 1').bind(relation.referrer_id).first();
-    const current = Number(wallet?.balance || 0);
-    const next = current + reward;
     const activityId = crypto.randomUUID();
+    const rewardId = crypto.randomUUID();
     const updated = await env.DB.batch([
-      env.DB.prepare(`UPDATE referral_records SET status='Rewarded', qualifying_deposit_id=?, qualifying_amount=?, reward_amount=?, qualified_at=?, rewarded_at=?, updated_at=? WHERE id=? AND status='Pending'`).bind(depositId, Number(amount), reward, now, now, now, recordId),
-      env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, relation.referrer_id),
-      env.DB.prepare(`INSERT INTO wallet_activity (id, user_id, reference_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, 'REFERRAL_BONUS', ?, ?, 'Completed', ?)`).bind(activityId, relation.referrer_id, recordId, reward, next, now)
+      env.DB.prepare(`INSERT OR IGNORE INTO referral_rewards (id, referral_record_id, referrer_id, referred_user_id, deposit_id, amount, created_at) SELECT ?, id, referrer_id, referred_user_id, ?, ?, ? FROM referral_records WHERE id = ? AND status = 'Pending'`).bind(rewardId, depositId, reward, now, recordId),
+      env.DB.prepare(`UPDATE wallet_accounts SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND changes() = 1`).bind(reward, now, relation.referrer_id),
+      env.DB.prepare(`INSERT INTO wallet_activity (id, user_id, reference_id, type, amount, balance_after, status, created_at) SELECT ?, user_id, ?, 'REFERRAL_BONUS', ?, balance, 'Completed', ? FROM wallet_accounts WHERE user_id = ? AND changes() = 1`).bind(activityId, recordId, reward, now, relation.referrer_id),
+      env.DB.prepare(`UPDATE referral_records SET status='Rewarded', qualifying_deposit_id=?, qualifying_amount=?, reward_amount=?, qualified_at=?, rewarded_at=?, updated_at=? WHERE id=? AND status='Pending' AND changes() = 1`).bind(depositId, Number(amount), reward, now, now, now, recordId)
     ]);
-    if (!updated?.[0]?.meta?.changes) return { qualified: false, reward: 0 };
+    if (!updated?.[3]?.meta?.changes) return { qualified: false, reward: 0 };
     return { qualified: true, reward };
   } catch (error) {
     console.error('Referral reward failed', error);
