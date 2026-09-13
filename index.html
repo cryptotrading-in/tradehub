@@ -84,6 +84,25 @@
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
   }
+
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    window.dispatchEvent(new CustomEvent('tradehubinstallavailable'));
+  });
+
+  window.tradehubInstall = async () => {
+    if (!deferredInstallPrompt) return false;
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    return choice.outcome === 'accepted';
+  };
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+  });
 })();
 </script>
 </body>
