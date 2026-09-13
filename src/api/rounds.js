@@ -66,17 +66,29 @@ function simulatedPrice(round, at) {
   const trend = direction * (0.001 + (0.0035 * progress));
   return Math.round(basePrice(round) * (1 + trend + wave));
 }
+async function ensureDefaultRounds(env, cycleId, now) {
+  const defaults = [
+    { roundNo: 1, direction: 'UP', startAt: now + 60, result: 'WIN' },
+    { roundNo: 2, direction: 'DOWN', startAt: now + 3660, result: 'WIN' }
+  ];
+  for (const round of defaults) {
+    await env.DB.prepare(`INSERT OR IGNORE INTO rounds
+      (id, cycle_id, round_no, direction, start_at, duration_seconds, profit_pct, fee_pct, result, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 300, 5, 0.5, ?, ?, ?)`)
+      .bind(crypto.randomUUID(), cycleId, round.roundNo, round.direction, round.startAt, round.result, now, now)
+      .run();
+  }
+}
 async function getCurrentCycle(env) {
   const now = nowSec();
   const today = cycleKey(new Date());
-  const tomorrow = cycleKey(new Date((now + 86400) * 1000));
-  const yesterday = cycleKey(new Date((now - 86400) * 1000));
-  let cycle = await env.DB.prepare('SELECT * FROM round_cycles WHERE cycle_key IN (?, ?, ?) ORDER BY cycle_key DESC LIMIT 1').bind(today, tomorrow, yesterday).first();
+  let cycle = await env.DB.prepare('SELECT * FROM round_cycles WHERE cycle_key = ? LIMIT 1').bind(today).first();
   if (!cycle) {
     const id = crypto.randomUUID();
     await env.DB.prepare("INSERT INTO round_cycles (id, cycle_key, created_at, status) VALUES (?, ?, ?, 'scheduled')").bind(id, today, now).run();
     cycle = await env.DB.prepare('SELECT * FROM round_cycles WHERE id = ?').bind(id).first();
   }
+  await ensureDefaultRounds(env, cycle.id, now);
   return cycle;
 }
 async function getRoundsForCycle(env, cycleId) {
