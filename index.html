@@ -12,7 +12,8 @@
     .install-app-button{display:none;border:1px solid rgba(255,255,255,.12);background:rgba(124,108,255,.16);color:#f5f7fb;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
     .install-app-button.is-visible{display:inline-flex;align-items:center;justify-content:center}
     .install-app-button:active{transform:translateY(1px)}
-    .auth-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+    .auth-cta{display:none;flex-wrap:wrap;gap:10px;margin-top:20px}
+    .auth-cta.is-visible{display:flex}
     .auth-cta a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:700}
     .auth-cta-primary{background:#7c6cff;color:#fff}.auth-cta-secondary{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#f5f7fb}
     .auth-user{display:none;margin-top:20px}
@@ -46,7 +47,7 @@
             <a class="auth-cta-primary" href="/signup/">Create Account</a>
             <a class="auth-cta-secondary" href="/signin/">Sign In</a>
           </div>
-          <p id="auth-user" class="auth-user">Signed in as <strong id="auth-user-name"></strong>.</p>
+          <p id="auth-user" class="auth-user">Welcome, <strong id="auth-user-name"></strong>.</p>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
@@ -96,22 +97,34 @@
   const authCta = document.getElementById('auth-cta');
   const authUser = document.getElementById('auth-user');
   const authUserName = document.getElementById('auth-user-name');
+  const pageTitle = document.getElementById('page-title');
+
+  // Keep auth UI hidden until the secure session check finishes.
+  authCta.classList.remove('is-visible');
+  authUser.classList.remove('is-visible');
 
   const loadSession = async () => {
     try {
       const response = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
       const result = await response.json();
       if (response.ok && result.ok && result.authenticated) {
-        authCta.style.display = 'none';
-        authUserName.textContent = result.session?.fullName || result.session?.username || 'your account';
-        authUser.classList.add('is-visible');
+        const name = result.session?.fullName || result.session?.username;
+        if (name) {
+          authUserName.textContent = name;
+          authUser.classList.add('is-visible');
+          if (normalize(location.pathname) === '/') pageTitle.textContent = `Welcome, ${name}`;
+        } else {
+          authUser.classList.remove('is-visible');
+          authCta.classList.add('is-visible');
+        }
+        authCta.classList.remove('is-visible');
       } else {
-        authCta.style.display = '';
         authUser.classList.remove('is-visible');
+        authCta.classList.add('is-visible');
       }
     } catch {
-      authCta.style.display = '';
       authUser.classList.remove('is-visible');
+      authCta.classList.add('is-visible');
     }
   };
   loadSession();
