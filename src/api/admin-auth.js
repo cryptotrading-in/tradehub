@@ -97,13 +97,18 @@ route('POST', '/api/admin/forgot-password', async ({ request, env }) => {
   const confirmNewPassword = typeof input?.confirmNewPassword === 'string' ? input.confirmNewPassword : '';
   if (!identifier || !/^\d{4,12}$/.test(recoveryPin)) return Response.json({ ok: false, error: 'Admin email/username and a valid Recovery PIN are required' }, { status: 400 });
   if (newPassword.length < 8 || newPassword.length > 128 || newPassword !== confirmNewPassword) return Response.json({ ok: false, error: 'New passwords must match and be 8-128 characters' }, { status: 400 });
-  const account = await env.DB.prepare("SELECT id, recovery_pin_hash, recovery_pin_salt, role, status FROM admin_accounts WHERE (username = ? OR email = ?) AND role = 'master' LIMIT 1").bind(identifier, identifier).first();
-  if (!account || account.status !== 'active' || !await verifySecret(recoveryPin, account.recovery_pin_hash, account.recovery_pin_salt)) return Response.json({ ok: false, error: 'Invalid recovery details' }, { status: 401 });
-  const password = await hashSecret(newPassword);
-  const now = Math.floor(Date.now() / 1000);
-  await env.DB.prepare('UPDATE admin_accounts SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?').bind(password.hash, password.salt, now, account.id).run();
-  await env.DB.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').bind(now, account.id).run();
-  return Response.json({ ok: true, passwordReset: true });
+  try {
+    const account = await env.DB.prepare("SELECT id, recovery_pin_hash, recovery_pin_salt, role, status FROM admin_accounts WHERE (username = ? OR email = ?) AND role = 'master' LIMIT 1").bind(identifier, identifier).first();
+    if (!account || account.status !== 'active' || !account.recovery_pin_hash || !account.recovery_pin_salt || !await verifySecret(recoveryPin, account.recovery_pin_hash, account.recovery_pin_salt)) return Response.json({ ok: false, error: 'Invalid recovery details' }, { status: 401 });
+    const password = await hashSecret(newPassword);
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare('UPDATE admin_accounts SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?').bind(password.hash, password.salt, now, account.id).run();
+    try { await env.DB.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').bind(now, account.id).run(); } catch (error) { console.warn('Admin session revoke skipped during password reset', error); }
+    return Response.json({ ok: true, passwordReset: true });
+  } catch (error) {
+    console.error('Admin password reset error', error);
+    return Response.json({ ok: false, error: 'Unable to reset admin password' }, { status: 500 });
+  }
 });
 
 route('POST', '/api/admin/staff', async ({ request, env }) => {
