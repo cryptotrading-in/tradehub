@@ -30,11 +30,11 @@
     </form>
   </main>
 <script>
-(async()=>{const r=await fetch('/api/admin/status');const d=await r.json();if(d.setupRequired)location.replace('/admin/setup.html');else{const s=await fetch('/api/session');const x=await s.json();if(x.authenticated&&x.session?.role==='admin')location.replace('/admin/')}})().catch(()=>{});
+(async()=>{const r=await fetch('/api/admin/status',{credentials:'same-origin'});const d=await r.json();if(d.setupRequired)location.replace('/admin/setup.html');else{const s=await fetch('/api/session',{credentials:'same-origin'});const x=await s.json();if(x.authenticated&&x.session?.role==='admin')location.replace('/admin/')}})().catch(()=>{});
 const loginForm=document.getElementById('loginForm'),forgotForm=document.getElementById('forgotForm'),msg=document.getElementById('msg');
 document.getElementById('forgotBtn').onclick=()=>{loginForm.hidden=true;forgotForm.hidden=false};document.getElementById('backBtn').onclick=()=>{forgotForm.hidden=true;loginForm.hidden=false};
-loginForm.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Signing in…';const f=new FormData(e.currentTarget);const r=await fetch('/api/admin/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){msg.textContent=d.error||'Login failed';return}location.replace('/admin/')});
-forgotForm.addEventListener('submit',async e=>{e.preventDefault();const m=document.getElementById('forgotMsg');m.textContent='Resetting…';const f=new FormData(e.currentTarget);const r=await fetch('/api/admin/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){m.textContent=d.error||'Reset failed';return}m.textContent='Password reset. You can now sign in.';forgotForm.reset();setTimeout(()=>{forgotForm.hidden=true;loginForm.hidden=false},700)})
+loginForm.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Signing in…';const f=new FormData(e.currentTarget);const r=await fetch('/api/admin/signin',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){msg.textContent=d.error||'Login failed';return}location.replace('/admin/')});
+forgotForm.addEventListener('submit',async e=>{e.preventDefault();const m=document.getElementById('forgotMsg');m.textContent='Resetting…';const f=new FormData(e.currentTarget);const r=await fetch('/api/admin/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){m.textContent=d.error||'Reset failed';return}m.textContent='Password reset. You can now sign in.';forgotForm.reset();setTimeout(()=>{forgotForm.hidden=true;loginForm.hidden=false},700)})
 </script>
 </body>
 </html>
