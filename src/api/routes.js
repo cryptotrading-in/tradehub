@@ -12,7 +12,7 @@ route('GET', '/api/health', async ({ env }) => {
 });
 
 route('GET', '/api/session', async ({ request, env }) => {
-  const session = await getSession(request, env);
+  const session = await getSession(request, env, 'client');
   if (!session) return Response.json({ ok: true, authenticated: false });
   const user = await env.DB.prepare('SELECT full_name, username FROM users WHERE id = ? LIMIT 1').bind(session.user_id).first();
   return Response.json({ ok: true, authenticated: true, session: { userId: session.user_id, fullName: user?.full_name || null, username: user?.username || null, role: session.role, expiresAt: session.expires_at } });
@@ -36,7 +36,7 @@ route('POST', '/api/auth/signup', async ({ request, env }) => {
   const userId = crypto.randomUUID();
   await env.DB.prepare(`INSERT INTO users (id, full_name, username, email, phone, password_hash, password_salt, recovery_pin_hash, recovery_pin_salt, terms_accepted_at, created_at, updated_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`).bind(userId, fullName, username, email, phone, password.hash, password.salt, recoveryPin.hash, recoveryPin.salt, now, now, now).run();
   const session = await createSession(env, { userId, role: 'client' });
-  return new Response(JSON.stringify({ ok: true, authenticated: true, user: { id: userId, fullName, username, email, phone } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 60 * 60 * 24 * 7) } });
+  return new Response(JSON.stringify({ ok: true, authenticated: true, user: { id: userId, fullName, username, email, phone } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 'client', 60 * 60 * 24 * 7) } });
 });
 
 route('POST', '/api/auth/signin', async ({ request, env }) => {
@@ -51,7 +51,7 @@ route('POST', '/api/auth/signin', async ({ request, env }) => {
   if (!user || user.status !== 'active') return Response.json({ ok: false, error: 'Invalid credentials' }, { status: 401 });
   if (!await verifySecret(password, user.password_hash, user.password_salt)) return Response.json({ ok: false, error: 'Invalid credentials' }, { status: 401 });
   const session = await createSession(env, { userId: user.id, role: 'client' });
-  return new Response(JSON.stringify({ ok: true, authenticated: true, user: { id: user.id, fullName: user.full_name, username: user.username, email: user.email, phone: user.phone } }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 60 * 60 * 24 * 7) } });
+  return new Response(JSON.stringify({ ok: true, authenticated: true, user: { id: user.id, fullName: user.full_name, username: user.username, email: user.email, phone: user.phone } }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 'client') } });
 });
 
 route('POST', '/api/auth/forgot-password', async ({ request, env }) => {
@@ -85,6 +85,6 @@ route('POST', '/api/auth/forgot-password', async ({ request, env }) => {
 
 route('POST', '/api/session/logout', async ({ request, env }) => {
   if (isStateChangingRequest(request) && !hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
-  await revokeSession(request, env);
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie() } });
+  await revokeSession(request, env, 'client');
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie('client') } });
 });
