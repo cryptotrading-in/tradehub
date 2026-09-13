@@ -8,4 +8,5 @@ function removeOldAccountPanels(){['securityPanel','profilePanel','historyPanel'
 function hook(){style();removeOldAccountPanels();const wb=document.querySelector('.wallet-withdraw');if(wb&&!wb.dataset.withdrawHook){wb.dataset.withdrawHook='1';wb.onclick=openWithdraw}}
 new MutationObserver(hook).observe(document.documentElement,{childList:true,subtree:true});hook();
 const a=document.createElement('script');a.src='/account-ui.js';a.defer=false;document.head.appendChild(a);
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-r]');if(!b)return;setTimeout(()=>{const account=document.getElementById('account');if(account)account.style.display=location.pathname.replace(/\/$/,'')==='/account'?'block':'none'},0)});
 })();
