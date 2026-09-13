@@ -12,7 +12,8 @@ route('GET', '/api/health', async ({ env }) => {
 route('GET', '/api/session', async ({ request, env }) => {
   const session = await getSession(request, env);
   if (!session) return Response.json({ ok: true, authenticated: false });
-  return Response.json({ ok: true, authenticated: true, session: { userId: session.user_id, role: session.role, expiresAt: session.expires_at } });
+  const user = await env.DB.prepare('SELECT full_name, username FROM users WHERE id = ? LIMIT 1').bind(session.user_id).first();
+  return Response.json({ ok: true, authenticated: true, session: { userId: session.user_id, fullName: user?.full_name || null, username: user?.username || null, role: session.role, expiresAt: session.expires_at } });
 });
 
 route('POST', '/api/auth/signup', async ({ request, env }) => {
