@@ -52,5 +52,6 @@ new MutationObserver(()=>{if($('account')&&!$('account').dataset.ready)ensure()}
 ensure();
 window.addEventListener('popstate',sync);
 const nav=document.querySelectorAll('[data-r="/account"]');nav.forEach(b=>b.addEventListener('click',()=>setTimeout(sync,0)));
+document.addEventListener('click',e=>{const shell=document.querySelector('.client-shell');if(!shell?.classList.contains('menu-open'))return;if(e.target.closest('.mobile-menu')||e.target.closest('.sidebar'))return;shell.classList.remove('menu-open')});
 sync();
 })();
