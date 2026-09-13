@@ -8,6 +8,11 @@
   <link rel="icon" href="/icons/nexus.svg" type="image/svg+xml" />
   <title>Tradehub</title>
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .install-app-button{display:none;border:1px solid rgba(255,255,255,.12);background:rgba(124,108,255,.16);color:#f5f7fb;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+    .install-app-button.is-visible{display:inline-flex;align-items:center;justify-content:center}
+    .install-app-button:active{transform:translateY(1px)}
+  </style>
 </head>
 <body class="shell-page">
   <div class="app-shell client-shell">
@@ -25,7 +30,7 @@
       <header class="topbar">
         <button class="mobile-menu" type="button" aria-label="Open menu">☰</button>
         <div><p class="eyebrow">TRADEHUB</p><h1>Premium trading workspace</h1></div>
-        <div class="topbar-status"><span class="status status-live">Ready</span></div>
+        <div class="topbar-status"><button id="install-app-button" class="install-app-button" type="button" aria-label="Install Tradehub">Install</button><span class="status status-live">Ready</span></div>
       </header>
       <main class="shell-content">
         <section class="shell-hero glass-card">
@@ -85,10 +90,12 @@
     });
   }
 
+  const installButton = document.getElementById('install-app-button');
   let deferredInstallPrompt = null;
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredInstallPrompt = event;
+    installButton.classList.add('is-visible');
     window.dispatchEvent(new CustomEvent('tradehubinstallavailable'));
   });
 
@@ -97,11 +104,15 @@
     deferredInstallPrompt.prompt();
     const choice = await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
+    installButton.classList.remove('is-visible');
     return choice.outcome === 'accepted';
   };
 
+  installButton.addEventListener('click', () => window.tradehubInstall());
+
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
+    installButton.classList.remove('is-visible');
   });
 })();
 </script>
