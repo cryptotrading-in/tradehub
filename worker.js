@@ -34,8 +34,6 @@ export default {
 };
 
 async function withActivityFeed(response, env) {
-  const type = response.headers.get('content-type') || '';
-  if (!type.includes('text/html')) return response;
   const html = await response.text();
   if (html.includes('/activity-feed.js')) return new Response(html, response);
   const updated = html.replace('</body>', '<script src="/activity-feed.js" defer></script></body>');
