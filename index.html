@@ -19,8 +19,6 @@
     .auth-user{display:none;margin-top:20px}
     .auth-user.is-visible{display:block}
     .auth-user strong{color:#f5f7fb}
-    .sign-out-button{display:none;margin-top:20px;border:1px solid rgba(255,95,112,.28);background:rgba(255,95,112,.10);color:#ffb2bb;border-radius:12px;padding:11px 16px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
-    .sign-out-button.is-visible{display:inline-flex}
   </style>
 </head>
 <body class="shell-page">
@@ -50,7 +48,6 @@
             <a class="auth-cta-secondary" href="/signin/">Sign In</a>
           </div>
           <p id="auth-user" class="auth-user">Welcome, <strong id="auth-user-name"></strong>.</p>
-          <button id="sign-out-button" class="sign-out-button" type="button">Sign Out</button>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
@@ -67,7 +64,7 @@
     '/': ['Your trading experience starts here.', 'Trade smarter with a simple, secure workspace.'],
     '/rounds': ['Trading rounds', 'Rounds workspace is ready for the next feature step.'],
     '/wallet': ['Wallet', 'Wallet workspace is ready for the next feature step.'],
-    '/account': ['Account', 'Manage your Tradehub account securely.']
+    '/account': ['Account', 'Account workspace is ready for the next feature step.']
   };
   const normalize = path => {
     if (!path || path === '/index.html') return '/';
@@ -86,7 +83,6 @@
     document.querySelectorAll('[data-route]').forEach(button => {
       button.classList.toggle('active', normalize(button.dataset.route) === path);
     });
-    updateSignOutVisibility();
   };
   document.querySelectorAll('[data-route]').forEach(button => {
     button.addEventListener('click', () => {
@@ -96,18 +92,12 @@
     });
   });
   window.addEventListener('popstate', () => render(location.pathname));
+  render(location.pathname, true);
 
   const authCta = document.getElementById('auth-cta');
   const authUser = document.getElementById('auth-user');
   const authUserName = document.getElementById('auth-user-name');
   const pageTitle = document.getElementById('page-title');
-  const signOutButton = document.getElementById('sign-out-button');
-  let authenticated = false;
-  let sessionName = '';
-
-  const updateSignOutVisibility = () => {
-    signOutButton.classList.toggle('is-visible', authenticated && normalize(location.pathname) === '/account');
-  };
 
   authCta.classList.remove('is-visible');
   authUser.classList.remove('is-visible');
@@ -118,58 +108,24 @@
       const result = await response.json();
       if (response.ok && result.ok && result.authenticated) {
         const name = result.session?.fullName || result.session?.username;
-        authenticated = Boolean(name);
-        sessionName = name || '';
         if (name) {
           authUserName.textContent = name;
           authUser.classList.add('is-visible');
-          authCta.classList.remove('is-visible');
           if (normalize(location.pathname) === '/') pageTitle.textContent = `Welcome, ${name}`;
         } else {
-          authenticated = false;
           authUser.classList.remove('is-visible');
           authCta.classList.add('is-visible');
         }
+        authCta.classList.remove('is-visible');
       } else {
-        authenticated = false;
-        sessionName = '';
         authUser.classList.remove('is-visible');
         authCta.classList.add('is-visible');
       }
-      updateSignOutVisibility();
     } catch {
-      authenticated = false;
-      sessionName = '';
       authUser.classList.remove('is-visible');
       authCta.classList.add('is-visible');
-      updateSignOutVisibility();
     }
   };
-
-  signOutButton.addEventListener('click', async () => {
-    signOutButton.disabled = true;
-    try {
-      const response = await fetch('/api/session/logout', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}'
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.ok) throw new Error(result?.error || 'Unable to sign out');
-      authenticated = false;
-      sessionName = '';
-      authUser.classList.remove('is-visible');
-      authCta.classList.add('is-visible');
-      signOutButton.classList.remove('is-visible');
-      history.pushState({}, '', '/');
-      render('/');
-    } catch {
-      signOutButton.disabled = false;
-    }
-  });
-
-  render(location.pathname, true);
   loadSession();
 
   if ('serviceWorker' in navigator) {
