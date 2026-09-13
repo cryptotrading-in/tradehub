@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tradehub · Admin Setup</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>body{min-height:100vh;display:grid;place-items:center;padding:20px}.auth-card{width:min(440px,100%);padding:28px}.auth-card h1{margin:.25rem 0 .5rem}.auth-card p{opacity:.75}.auth-card form{display:grid;gap:12px;margin-top:20px}.auth-card input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff08;color:inherit}.auth-card button{padding:12px;border:0;border-radius:10px;cursor:pointer}.msg{min-height:20px;font-size:.9rem}.small{font-size:.8rem;opacity:.65}</style>
+</head>
+<body class="shell-page">
+  <main class="glass-card auth-card">
+    <span class="label">TRADEHUB · FIRST-TIME SETUP</span>
+    <h1>Create Master Admin</h1>
+    <p>This setup can be completed only once. Your password and Recovery PIN are stored as salted hashes.</p>
+    <form id="setupForm">
+      <input name="fullName" placeholder="Admin name" autocomplete="name" required />
+      <input name="email" type="email" placeholder="Admin email" autocomplete="email" required />
+      <input name="password" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
+      <input name="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password" required />
+      <input name="recoveryPin" inputmode="numeric" pattern="[0-9]{4,12}" placeholder="Recovery PIN (4–12 digits)" autocomplete="off" required />
+      <button type="submit">Create Master Admin</button>
+      <div class="msg" id="msg"></div>
+    </form>
+    <p class="small">Keep the Recovery PIN private. It is the password-reset method for the Master Admin.</p>
+  </main>
+<script>
+(async()=>{const s=await fetch('/api/admin/status');const d=await s.json();if(!d.setupRequired)location.replace('/admin/login.html')})().catch(()=>{});
+document.getElementById('setupForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const msg=document.getElementById('msg');msg.textContent='Creating admin…';const r=await fetch('/api/admin/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){msg.textContent=d.error||'Setup failed';return}msg.textContent='Admin created. Opening Control Center…';location.replace('/admin/')})
+</script>
+</body>
+</html>
