@@ -75,6 +75,27 @@ route('POST', '/api/withdrawal-security', async ({ request, env }) => {
   return Response.json({ ok: true, withdrawalAddress: address, pinSet: true });
 });
 
+route('POST', '/api/auth/change-password', async ({ request, env }) => {
+  if (!hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
+  const session = await clientSession(request, env);
+  if (!session) return Response.json({ ok: false, error: 'Authentication required' }, { status: 401 });
+  let input; try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
+  const currentPassword = typeof input?.currentPassword === 'string' ? input.currentPassword : '';
+  const newPassword = typeof input?.newPassword === 'string' ? input.newPassword : '';
+  const confirmNewPassword = typeof input?.confirmNewPassword === 'string' ? input.confirmNewPassword : '';
+  if (!currentPassword) return Response.json({ ok: false, error: 'Current password is required' }, { status: 400 });
+  if (newPassword.length < 8 || newPassword.length > 128) return Response.json({ ok: false, error: 'New password must be 8-128 characters' }, { status: 400 });
+  if (newPassword !== confirmNewPassword) return Response.json({ ok: false, error: 'Passwords do not match' }, { status: 400 });
+  if (currentPassword === newPassword) return Response.json({ ok: false, error: 'New password must be different from current password' }, { status: 400 });
+  const user = await env.DB.prepare('SELECT password_hash, password_salt, status FROM users WHERE id = ? LIMIT 1').bind(session.user_id).first();
+  if (!user || user.status !== 'active') return Response.json({ ok: false, error: 'Account not found' }, { status: 404 });
+  if (!(await verifySecret(currentPassword, user.password_hash, user.password_salt))) return Response.json({ ok: false, error: 'Current password is incorrect' }, { status: 403 });
+  const password = await hashSecret(newPassword);
+  const now = Math.floor(Date.now() / 1000);
+  await env.DB.prepare('UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ? AND status = \'active\'').bind(password.hash, password.salt, now, session.user_id).run();
+  return Response.json({ ok: true, passwordChanged: true });
+});
+
 route('GET', '/api/withdrawals', async ({ request, env }) => {
   await ensureWithdrawalTables(env);
   const session = await clientSession(request, env);
