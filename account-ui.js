@@ -44,7 +44,7 @@ async function logout(){const msg=$('accountLogoutMsg');msg.textContent='Logging
 function renderAccount(p){const section=ensure();const show=p==='/account';section.style.display=show?'block':'none';if(show){loadProfile();loadSecurity();loadHistory()}}
 const oldRender=window.render;
 if(typeof oldRender==='function'){
- const wrap=()=>{oldRender.apply(null,arguments);renderAccount(arguments[0])};
+ const wrap=function(p){oldRender.call(this,p);renderAccount(p)};
  window.render=wrap
 }
 const sync=()=>renderAccount(location.pathname.replace(/\/$/,'')||'/');
