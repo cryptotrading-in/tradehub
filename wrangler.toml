@@ -1,6 +1,12 @@
 name = "tradehub"
+main = "worker.js"
 compatibility_date = "2026-09-13"
 
 [assets]
 directory = "."
 html_handling = "auto-trailing-slash"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tradehub-db"
+database_id = "1c0f1bbe-16ba-4176-8175-cce9d54c2b8b"
