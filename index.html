@@ -15,6 +15,9 @@
     .auth-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
     .auth-cta a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:700}
     .auth-cta-primary{background:#7c6cff;color:#fff}.auth-cta-secondary{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#f5f7fb}
+    .auth-user{display:none;margin-top:20px}
+    .auth-user.is-visible{display:block}
+    .auth-user strong{color:#f5f7fb}
   </style>
 </head>
 <body class="shell-page">
@@ -39,10 +42,11 @@
           <span class="label">TRADEHUB</span>
           <h2 id="page-title">Your trading experience starts here.</h2>
           <p id="page-description">Trade smarter with a simple, secure workspace.</p>
-          <div class="auth-cta">
+          <div id="auth-cta" class="auth-cta">
             <a class="auth-cta-primary" href="/signup/">Create Account</a>
             <a class="auth-cta-secondary" href="/signin/">Sign In</a>
           </div>
+          <p id="auth-user" class="auth-user">Signed in as <strong id="auth-user-name"></strong>.</p>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
@@ -88,6 +92,29 @@
   });
   window.addEventListener('popstate', () => render(location.pathname));
   render(location.pathname, true);
+
+  const authCta = document.getElementById('auth-cta');
+  const authUser = document.getElementById('auth-user');
+  const authUserName = document.getElementById('auth-user-name');
+
+  const loadSession = async () => {
+    try {
+      const response = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json();
+      if (response.ok && result.ok && result.authenticated) {
+        authCta.style.display = 'none';
+        authUserName.textContent = result.session?.userId || 'your account';
+        authUser.classList.add('is-visible');
+      } else {
+        authCta.style.display = '';
+        authUser.classList.remove('is-visible');
+      }
+    } catch {
+      authCta.style.display = '';
+      authUser.classList.remove('is-visible');
+    }
+  };
+  loadSession();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
