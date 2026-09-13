@@ -1,5 +1,6 @@
 import { route } from './router.js';
 import { getSession, hasTrustedOrigin, requireSession } from './session.js';
+import { processReferralQualification } from './referrals.js';
 
 async function ensureDepositTables(env) {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS deposit_settings (
@@ -202,5 +203,8 @@ route('POST', '/api/admin/deposits/action', async ({ request, env }) => {
     console.error('Deposit approval transaction failed', error);
     return Response.json({ ok: false, error: 'Deposit approval could not be completed safely' }, { status: 500 });
   }
-  return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), bonus: bonusAmount, balance: next });
+  let referral = { qualified: false, reward: 0 };
+  try { referral = await processReferralQualification(env, deposit.user_id, deposit.id, Number(deposit.amount), now); }
+  catch (error) { console.error('Referral qualification failed', error); }
+  return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), bonus: bonusAmount, referralQualified: referral.qualified, referralReward: referral.reward, balance: next });
 });
