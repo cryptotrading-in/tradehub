@@ -1,4 +1,3 @@
-import { route } from './router.js';
 import { clearSessionCookie, createSession, getSession, hasTrustedOrigin, sessionCookieFor, requireSession } from './session.js';
 import { hashSecret, normalizeEmail, normalizeUsername, verifySecret } from './auth.js';
 
@@ -67,7 +66,7 @@ route('POST', '/api/admin/setup', async ({ request, env }) => {
     console.error('Admin setup error', error);
     return Response.json({ ok: false, error: 'Unable to create the master admin account' }, { status: 500 });
   }
-  return new Response(JSON.stringify({ ok: true, setupComplete: true, admin: { id, fullName, username, email, role: 'master' } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie() } });
+  return new Response(JSON.stringify({ ok: true, setupComplete: true, admin: { id, fullName, username, email, role: 'master' } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie('admin') } });
 });
 
 route('POST', '/api/admin/signin', async ({ request, env }) => {
@@ -83,7 +82,7 @@ route('POST', '/api/admin/signin', async ({ request, env }) => {
   const account = await env.DB.prepare('SELECT id, full_name, username, email, password_hash, password_salt, role, permissions_json, status FROM admin_accounts WHERE username = ? OR email = ? LIMIT 1').bind(identifier, identifier).first();
   if (!account || account.status !== 'active' || !await verifySecret(password, account.password_hash, account.password_salt)) return Response.json({ ok: false, error: 'Invalid admin credentials' }, { status: 401 });
   const session = await createSession(env, { userId: account.id, role: 'admin' });
-  return new Response(JSON.stringify({ ok: true, authenticated: true, admin: { id: account.id, fullName: account.full_name, username: account.username, email: account.email, role: account.role, permissions: JSON.parse(account.permissions_json || '{}') } }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token) } });
+  return new Response(JSON.stringify({ ok: true, authenticated: true, admin: { id: account.id, fullName: account.full_name, username: account.username, email: account.email, role: account.role, permissions: JSON.parse(account.permissions_json || '{}') } }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 'admin') } });
 });
 
 route('POST', '/api/admin/forgot-password', async ({ request, env }) => {
@@ -147,9 +146,9 @@ route('GET', '/api/admin/staff', async ({ request, env }) => {
 });
 
 route('POST', '/api/admin/logout', async ({ request, env }) => {
-  const session = await getSession(request, env);
+  const session = await getSession(request, env, 'admin');
   if (session?.role === 'admin') {
     await env.DB.prepare('UPDATE sessions SET revoked_at = ? WHERE token_hash = ?').bind(Math.floor(Date.now() / 1000), session.token_hash).run();
   }
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie() } });
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie('admin') } });
 });
