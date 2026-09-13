@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080b12" />
+  <title>Reset Password — Tradehub</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .auth-page{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 0%,rgba(124,108,255,.16),transparent 42%),#080b12}.auth-card{width:min(100%,460px);padding:28px}.auth-card h1{margin:8px 0}.auth-card p{color:#9ba5b7}.auth-form{display:grid;gap:14px;margin-top:22px}.auth-form label{display:grid;gap:7px;font-size:13px;font-weight:600}.auth-form input{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#141925;color:#f5f7fb;border-radius:12px;padding:13px 14px;font:inherit}.auth-form button{border:0;border-radius:12px;padding:13px 16px;background:#7c6cff;color:#fff;font:inherit;font-weight:700;cursor:pointer}.auth-message{min-height:20px;font-size:13px}.auth-links{margin-top:18px;font-size:13px}.auth-links a,.back-link{color:#b8b1ff;text-decoration:none}.back-link{display:inline-block;margin-bottom:14px;color:#9ba5b7}
+  </style>
+</head>
+<body class="auth-page">
+  <main class="glass-card auth-card">
+    <a class="back-link" href="/signin/">← Back to Sign In</a>
+    <span class="label">TRADEHUB</span>
+    <h1>Reset your password</h1>
+    <p>Use your Recovery PIN to set a new password.</p>
+    <form id="reset-form" class="auth-form">
+      <label>Username or Email<input name="identifier" autocomplete="username" required /></label>
+      <label>Recovery PIN<input name="recoveryPin" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" autocomplete="off" required /></label>
+      <label>New Password<input name="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required /></label>
+      <label>Confirm New Password<input name="confirmNewPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required /></label>
+      <button type="submit">Reset Password</button>
+      <div id="auth-message" class="auth-message" aria-live="polite"></div>
+    </form>
+    <div class="auth-links"><a href="/signin/">Return to Sign In</a></div>
+  </main>
+<script>
+const form = document.getElementById('reset-form');
+const message = document.getElementById('auth-message');
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(form));
+  if (data.newPassword !== data.confirmNewPassword) { message.textContent = 'Passwords do not match'; return; }
+  message.textContent = 'Resetting password…';
+  try {
+    const response = await fetch('/api/auth/forgot-password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || 'Unable to reset password');
+    message.textContent = 'Password reset successfully. Redirecting to Sign In…';
+    setTimeout(() => { window.location.href = '/signin/'; }, 900);
+  } catch (error) { message.textContent = error.message; }
+});
+</script>
+</body>
+</html>
