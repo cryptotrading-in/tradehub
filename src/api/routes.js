@@ -19,6 +19,31 @@ route('GET', '/api/session', async ({ request, env }) => {
   return Response.json({ ok: true, authenticated: true, session: { userId: session.user_id, fullName: user?.full_name || null, username: user?.username || null, role: session.role, expiresAt: session.expires_at } });
 });
 
+route('GET', '/api/profile', async ({ request, env }) => {
+  const session = await getSession(request, env, 'client');
+  if (!session) return Response.json({ ok: false, error: 'Authentication required' }, { status: 401 });
+  const user = await env.DB.prepare('SELECT full_name, username, email, phone FROM users WHERE id = ? AND status = \'active\' LIMIT 1').bind(session.user_id).first();
+  if (!user) return Response.json({ ok: false, error: 'Account not found' }, { status: 404 });
+  return Response.json({ ok: true, profile: { fullName: user.full_name, username: user.username, email: user.email, phone: user.phone } });
+});
+
+route('POST', '/api/profile', async ({ request, env }) => {
+  if (!hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
+  const session = await getSession(request, env, 'client');
+  if (!session) return Response.json({ ok: false, error: 'Authentication required' }, { status: 401 });
+  let input;
+  try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
+  const fullName = typeof input?.fullName === 'string' ? input.fullName.trim() : '';
+  const phone = typeof input?.phone === 'string' ? input.phone.trim() : '';
+  if (fullName.length < 2 || fullName.length > 100) return Response.json({ ok: false, error: 'Invalid full name' }, { status: 400 });
+  if (phone.length < 7 || phone.length > 30) return Response.json({ ok: false, error: 'Invalid phone number' }, { status: 400 });
+  const now = Math.floor(Date.now() / 1000);
+  const result = await env.DB.prepare('UPDATE users SET full_name = ?, phone = ?, updated_at = ? WHERE id = ? AND status = \'active\'').bind(fullName, phone, now, session.user_id).run();
+  if (!result.meta?.changes) return Response.json({ ok: false, error: 'Account not found' }, { status: 404 });
+  const user = await env.DB.prepare('SELECT full_name, username, email, phone FROM users WHERE id = ? LIMIT 1').bind(session.user_id).first();
+  return Response.json({ ok: true, profile: { fullName: user.full_name, username: user.username, email: user.email, phone: user.phone } });
+});
+
 route('POST', '/api/auth/signup', async ({ request, env }) => {
   if (!hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
   let input;
