@@ -34,6 +34,8 @@ route('GET', '/api/account-history', async ({ request, env }) => {
   if (filter === 'all' || filter === 'deposit') {
     const rows = await env.DB.prepare(`SELECT id, amount, status, created_at FROM deposit_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`).bind(session.user_id).all();
     for (const r of rows.results || []) push({ id: 'deposit:' + r.id, category: 'deposit', title: 'Deposit ' + r.status, details: Number(r.amount).toFixed(2) + ' USDT', status: r.status, created_at: r.created_at });
+    const bonuses = await env.DB.prepare(`SELECT id, bonus_amount, bonus_percent, created_at FROM first_deposit_bonuses WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`).bind(session.user_id).all();
+    for (const r of bonuses.results || []) push({ id: 'bonus:' + r.id, category: 'deposit', title: 'First Deposit Bonus', details: '+' + Number(r.bonus_amount).toFixed(2) + ' USDT · ' + Number(r.bonus_percent).toFixed(2) + '%', status: 'Completed', created_at: r.created_at });
   }
   if (filter === 'all' || filter === 'withdrawal') {
     const rows = await env.DB.prepare(`SELECT id, amount, network, status, created_at FROM withdrawal_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`).bind(session.user_id).all();
