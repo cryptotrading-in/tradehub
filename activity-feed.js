@@ -6,18 +6,21 @@
     ['Us*','deposited',550],['Ka*','withdrew',240],['Ah*','received bonus',55],['No*','completed Round 3',0],['Mu*','logged in',0],['Ta*','deposited',280],['Be*','received referral bonus',30],['Hy*','withdrew',350],['Za*','completed Round 2',0],['Al*','deposited',410],
     ['Fa*','logged in',0],['Ra*','received bonus',40],['Mo*','deposited',680],['Iq*','withdrew',260],['Am*','completed Round 5',0],['Bi*','deposited',390],['No*','received referral bonus',25],['Ad*','logged in',0],['Ri*','withdrew',190],['Hu*','completed Round 1',0]
   ].map((x,i)=>({id:'demo:'+i,name:x[0],type:/deposited/.test(x[1])?'deposit':/withdrew/.test(x[1])?'withdrawal':/logged/.test(x[1])?'login':/referral/.test(x[1])?'referral_bonus':/bonus/.test(x[1])?'bonus':'round',amount:x[2],created_at:0,demo:true,text:x[1]}));
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   const money=n=>Number(n||0).toFixed(2);
   const text=a=>a.demo?`${a.name} ${a.text}${a.amount?` ${money(a.amount)} USDT`:''}`:`${a.name} ${a.type==='deposit'?'deposited':a.type==='withdrawal'?'withdrew':a.type==='login'?'logged in':a.type==='referral_bonus'?'received referral bonus':a.type==='bonus'?'received bonus':'completed a round'}${a.amount?` ${money(a.amount)} USDT`:''}`;
   function install(){
+    if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
     if(document.getElementById('tradehubActivityFeed'))return;
-    const hero=document.querySelector('.shell-hero');
-    if(!hero){setTimeout(install,100);return;}
+    const home=document.querySelector('.shell-content');
+    if(!home){setTimeout(install,100);return;}
     const style=document.createElement('style');
     style.id='tradehubActivityFeedStyle';
     style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
     document.head.appendChild(style);
-    const box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');hero.appendChild(box);
+    const box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
+    const hero=home.querySelector('.shell-hero');
+    if(hero)hero.insertAdjacentElement('afterend',box);else home.appendChild(box);
     let real=[],idx=0;
     async function refresh(){try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}}
     function next(){
