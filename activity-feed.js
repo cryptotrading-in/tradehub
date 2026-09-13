@@ -11,7 +11,8 @@
   const text=a=>a.demo?`${a.name} ${a.text}${a.amount?` ${money(a.amount)} USDT`:''}`:`${a.name} ${a.type==='deposit'?'deposited':a.type==='withdrawal'?'withdrew':a.type==='login'?'logged in':a.type==='referral_bonus'?'received referral bonus':a.type==='bonus'?'received bonus':'completed a round'}${a.amount?` ${money(a.amount)} USDT`:''}`;
   function install(){
     if(document.getElementById('tradehubActivityFeed'))return;
-    const hero=document.querySelector('.shell-hero'); if(!hero)return;
+    const hero=document.querySelector('.shell-hero');
+    if(!hero){setTimeout(install,100);return;}
     const style=document.createElement('style');
     style.id='tradehubActivityFeedStyle';
     style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
