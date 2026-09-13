@@ -24,8 +24,20 @@ async function ensureDepositTables(env) {
     reviewed_by TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallet_deposit_transactions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    deposit_id TEXT NOT NULL UNIQUE,
+    amount REAL NOT NULL,
+    balance_after REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Completed',
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (deposit_id) REFERENCES deposit_requests(id) ON DELETE CASCADE
+  )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_user_created ON deposit_requests(user_id, created_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_status_created ON deposit_requests(status, created_at DESC)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_wallet_deposit_transactions_user_created ON wallet_deposit_transactions(user_id, created_at DESC)').run();
 }
 
 async function adminGuard(request, env) {
@@ -138,6 +150,6 @@ route('POST', '/api/admin/deposits/action', async ({ request, env }) => {
   } else {
     await env.DB.prepare('INSERT INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, ?, ?)').bind(deposit.user_id, Number(deposit.amount), now).run();
   }
-  await env.DB.prepare(`INSERT INTO wallet_transactions (id, user_id, trade_id, type, amount, balance_after, status, created_at) VALUES (?, ?, NULL, 'DEPOSIT', ?, ?, 'Completed', ?)`).bind(crypto.randomUUID(), deposit.user_id, Number(deposit.amount), next, now).run();
+  await env.DB.prepare(`INSERT INTO wallet_deposit_transactions (id, user_id, deposit_id, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, 'Completed', ?)`).bind(crypto.randomUUID(), deposit.user_id, deposit.id, Number(deposit.amount), next, now).run();
   return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), balance: next });
 });
