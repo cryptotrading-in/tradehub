@@ -22,6 +22,12 @@ export default {
       return env.ASSETS.fetch(indexRequest);
     }
 
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    if (['/withdrawal-ui.js', '/account-ui.js'].includes(url.pathname)) {
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
+    }
+    return response;
   }
 };
