@@ -19,7 +19,16 @@ export default {
         method: 'GET',
         headers: request.headers,
       });
-      return env.ASSETS.fetch(indexRequest);
+      const response = await env.ASSETS.fetch(indexRequest);
+      if (!response.ok) return response;
+      const html = await response.text();
+      // Only bridge the existing SPA navigation to the existing Account module.
+      // No Account panels or UI are created here.
+      const routeBridge = `<script>(function(){var push=history.pushState;history.pushState=function(){var r=push.apply(this,arguments);window.dispatchEvent(new PopStateEvent('popstate'));return r};})();</script>`;
+      return new Response(html.replace('</body>', routeBridge + '</body>'), {
+        status: response.status,
+        headers: response.headers,
+      });
     }
 
     return env.ASSETS.fetch(request);
