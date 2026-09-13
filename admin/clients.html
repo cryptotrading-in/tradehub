@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/styles.css" />
   <style>
     html.auth-check body{visibility:hidden}
+    .back-admin{position:fixed;top:18px;left:18px;z-index:50;border:1px solid #ffffff1a;border-radius:10px;padding:9px 13px;background:#ffffff08;color:inherit;font-size:18px;line-height:1;cursor:pointer}
     .wrap{max-width:1100px;margin:30px auto;padding:20px}
     .search{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff08;color:inherit;outline:none;margin-top:14px}
     .table-wrap{margin-top:20px;overflow-x:auto;border:1px solid #ffffff12;border-radius:12px}
@@ -23,6 +24,7 @@
   <script>document.documentElement.classList.add('auth-check');fetch('/api/admin/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
 </head>
 <body class="shell-page">
+  <button class="back-admin" type="button" aria-label="Back to admin" onclick="location.href='/admin/'">←</button>
   <main class="wrap">
     <section class="glass-card" style="padding:22px">
       <span class="label">TRADEHUB · CLIENTS</span>
