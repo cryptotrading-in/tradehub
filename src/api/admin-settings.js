@@ -12,6 +12,14 @@ async function ensureAdminSettings(env) {
     updated_at INTEGER NOT NULL
   )`).run();
   await env.DB.prepare(`INSERT OR IGNORE INTO admin_settings (id, updated_at) VALUES (1, ?)`).bind(Math.floor(Date.now() / 1000)).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS deposit_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    trc20_address TEXT NOT NULL DEFAULT '',
+    erc20_address TEXT NOT NULL DEFAULT '',
+    minimum_deposit REAL NOT NULL DEFAULT 151,
+    updated_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO deposit_settings (id, updated_at) VALUES (1, ?)`).bind(Math.floor(Date.now() / 1000)).run();
 }
 
 async function adminGuard(request, env) {
@@ -48,13 +56,19 @@ route('POST', '/api/admin/settings', async ({ request, env }) => {
   await ensureAdminSettings(env);
   let input;
   try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
+  const trc20Address = typeof input?.trc20Address === 'string' ? input.trc20Address.trim() : '';
+  const erc20Address = typeof input?.erc20Address === 'string' ? input.erc20Address.trim() : '';
+  const minimumDeposit = Number(input?.minimumDeposit);
+  if (!Number.isFinite(minimumDeposit) || minimumDeposit <= 0) return Response.json({ ok: false, error: 'Minimum deposit must be greater than zero' }, { status: 400 });
   const w1 = cleanWhatsApp(input?.whatsapp1), w2 = cleanWhatsApp(input?.whatsapp2), w3 = cleanWhatsApp(input?.whatsapp3);
   const bonusEnabled = input?.bonusEnabled === true;
   const bonusPercent = Number(input?.bonusPercent);
   if (!Number.isFinite(bonusPercent) || bonusPercent < 0 || bonusPercent > 100) return Response.json({ ok: false, error: 'Bonus percentage must be between 0 and 100' }, { status: 400 });
   const now = Math.floor(Date.now() / 1000);
-  await env.DB.prepare(`UPDATE admin_settings SET whatsapp_1 = ?, whatsapp_2 = ?, whatsapp_3 = ?, bonus_enabled = ?, bonus_percent = ?, updated_at = ? WHERE id = 1`)
-    .bind(w1, w2, w3, bonusEnabled ? 1 : 0, bonusPercent, now).run();
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE deposit_settings SET trc20_address = ?, erc20_address = ?, minimum_deposit = ?, updated_at = ? WHERE id = 1`).bind(trc20Address, erc20Address, minimumDeposit, now),
+    env.DB.prepare(`UPDATE admin_settings SET whatsapp_1 = ?, whatsapp_2 = ?, whatsapp_3 = ?, bonus_enabled = ?, bonus_percent = ?, updated_at = ? WHERE id = 1`).bind(w1, w2, w3, bonusEnabled ? 1 : 0, bonusPercent, now)
+  ]);
   return Response.json({ ok: true });
 });
 
