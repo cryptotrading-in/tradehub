@@ -5,6 +5,7 @@ import './rounds.js';
 import './deposits.js';
 import './admin-auth.js';
 import './account-history.js';
+import './admin-settings.js';
 
 route('GET', '/api/health', async ({ env }) => {
   const result = await env.DB.prepare('SELECT 1 AS connected').first();
