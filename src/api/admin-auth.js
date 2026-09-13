@@ -67,8 +67,7 @@ route('POST', '/api/admin/setup', async ({ request, env }) => {
     console.error('Admin setup error', error);
     return Response.json({ ok: false, error: 'Unable to create the master admin account' }, { status: 500 });
   }
-  const session = await createSession(env, { userId: id, role: 'admin' });
-  return new Response(JSON.stringify({ ok: true, setupComplete: true, admin: { id, fullName, username, email, role: 'master' } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token) } });
+  return new Response(JSON.stringify({ ok: true, setupComplete: true, admin: { id, fullName, username, email, role: 'master' } }), { status: 201, headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie() } });
 });
 
 route('POST', '/api/admin/signin', async ({ request, env }) => {
