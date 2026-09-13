@@ -1,7 +1,7 @@
 import { route } from './router.js';
 import { hasTrustedOrigin, requireSession } from './session.js';
 
-const MIN_BALANCES = Object.freeze({ 1: 50, 2: 100, 3: 150, 4: 200, 5: 250 });
+const MIN_BALANCES = Object.freeze({ 1: 150, 2: 250 });
 const ENTRY_WINDOW_RATIO = 0.2;
 
 function nowSec() { return Math.floor(Date.now() / 1000); }
@@ -194,7 +194,7 @@ route('POST', '/api/admin/rounds', async ({ request, env }) => {
   const profitPct = Number(input?.profitPct);
   const feePct = Number(input?.feePct);
   const result = input?.result;
-  if (![1,2,3,4,5].includes(roundNo) || !['UP','DOWN'].includes(direction) || !Number.isFinite(startAt) || !Number.isFinite(durationSeconds) || durationSeconds <= 0 || !Number.isFinite(profitPct) || profitPct < 0 || !Number.isFinite(feePct) || feePct < 0 || !['WIN','LOSS'].includes(result)) return Response.json({ ok: false, error: 'Invalid round configuration' }, { status: 400 });
+  if (![1,2].includes(roundNo) || !['UP','DOWN'].includes(direction) || !Number.isFinite(startAt) || !Number.isFinite(durationSeconds) || durationSeconds <= 0 || !Number.isFinite(profitPct) || profitPct < 0 || !Number.isFinite(feePct) || feePct < 0 || !['WIN','LOSS'].includes(result)) return Response.json({ ok: false, error: 'Invalid round configuration' }, { status: 400 });
   const cycle = await getCurrentCycle(env);
   const existing = await env.DB.prepare('SELECT id FROM rounds WHERE cycle_id = ? AND round_no = ? LIMIT 1').bind(cycle.id, roundNo).first();
   const now = nowSec();
