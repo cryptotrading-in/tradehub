@@ -1,0 +1,34 @@
+(()=>{
+  const FAKE=[
+    ['Hy*','deposited',500],['Be*','withdrew',300],['Ah*','completed Round 3',0],['Sa*','received bonus',50],['Mu*','deposited',250],['Za*','logged in',0],['Al*','received referral bonus',25],['Fa*','completed Round 2',0],['Ra*','deposited',750],['No*','withdrew',400],
+    ['Ha*','logged in',0],['Us*','received bonus',30],['Ka*','deposited',350],['Am*','completed Round 5',0],['Mo*','withdrew',220],['Ta*','deposited',600],['Sa*','logged in',0],['Iq*','received referral bonus',20],['Bi*','completed Round 1',0],['Za*','deposited',450],
+    ['Hu*','withdrew',180],['Ad*','received bonus',45],['Na*','logged in',0],['Fa*','deposited',900],['Ri*','completed Round 4',0],['As*','withdrew',275],['Ma*','deposited',320],['Ar*','received referral bonus',35],['Ha*','logged in',0],['Sa*','completed Round 6',0],
+    ['Us*','deposited',550],['Ka*','withdrew',240],['Ah*','received bonus',55],['No*','completed Round 3',0],['Mu*','logged in',0],['Ta*','deposited',280],['Be*','received referral bonus',30],['Hy*','withdrew',350],['Za*','completed Round 2',0],['Al*','deposited',410],
+    ['Fa*','logged in',0],['Ra*','received bonus',40],['Mo*','deposited',680],['Iq*','withdrew',260],['Am*','completed Round 5',0],['Bi*','deposited',390],['No*','received referral bonus',25],['Ad*','logged in',0],['Ri*','withdrew',190],['Hu*','completed Round 1',0]
+  ].map((x,i)=>({id:'demo:'+i,name:x[0],type:/deposited/.test(x[1])?'deposit':/withdrew/.test(x[1])?'withdrawal':/logged/.test(x[1])?'login':/referral/.test(x[1])?'referral_bonus':/bonus/.test(x[1])?'bonus':'round',amount:x[2],created_at:0,demo:true,text:x[1]}));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const money=n=>Number(n||0).toFixed(2);
+  const text=a=>a.demo?`${a.name} ${a.text}${a.amount?` ${money(a.amount)} USDT`:''}`:`${a.name} ${a.type==='deposit'?'deposited':a.type==='withdrawal'?'withdrew':a.type==='login'?'logged in':a.type==='referral_bonus'?'received referral bonus':a.type==='bonus'?'received bonus':'completed a round'}${a.amount?` ${money(a.amount)} USDT`:''}`;
+  function install(){
+    if(document.getElementById('tradehubActivityFeed'))return;
+    const hero=document.querySelector('.shell-hero'); if(!hero)return;
+    const style=document.createElement('style');
+    style.id='tradehubActivityFeedStyle';
+    style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
+    document.head.appendChild(style);
+    const box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');hero.appendChild(box);
+    let real=[],idx=0;
+    async function refresh(){try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}}
+    function next(){
+      const pool=real.length?real.concat(FAKE):FAKE;
+      if(!pool.length)return;
+      const a=pool[idx%pool.length];idx++;
+      box.innerHTML=`<div class="thaf-item"><span class="thaf-dot">●</span>${esc(text(a))}</div>`;
+      const item=box.firstElementChild;
+      requestAnimationFrame(()=>item.classList.add('show'));
+      setTimeout(()=>item.classList.remove('show'),1800);
+    }
+    refresh();setTimeout(next,500);setInterval(next,2400);setInterval(refresh,12000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
