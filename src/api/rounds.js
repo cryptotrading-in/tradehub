@@ -6,9 +6,10 @@ const ENTRY_WINDOW_RATIO = 0.2;
 
 function nowSec() { return Math.floor(Date.now() / 1000); }
 function cycleKey(date = new Date()) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(date.getUTCDate()).padStart(2, '0');
+  const shifted = new Date(date.getTime() + 5 * 60 * 60 * 1000);
+  const y = shifted.getUTCFullYear();
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(shifted.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 function stateForRound(round, now) {
