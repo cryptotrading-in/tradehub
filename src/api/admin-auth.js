@@ -35,6 +35,14 @@ route('GET', '/api/admin/status', async ({ env }) => {
   return Response.json({ ok: true, setupRequired: !master });
 });
 
+route('GET', '/api/admin/session', async ({ request, env }) => {
+  const session = await getSession(request, env, 'admin');
+  if (!session) return Response.json({ ok: true, authenticated: false });
+  const admin = await env.DB.prepare('SELECT id, full_name, username, email, role, permissions_json, status FROM admin_accounts WHERE id = ? LIMIT 1').bind(session.user_id).first();
+  if (!admin || admin.status !== 'active') return Response.json({ ok: true, authenticated: false });
+  return Response.json({ ok: true, authenticated: true, session: { userId: admin.id, fullName: admin.full_name, username: admin.username, email: admin.email, role: 'admin', adminRole: admin.role, permissions: JSON.parse(admin.permissions_json || '{}'), expiresAt: session.expires_at } });
+});
+
 route('POST', '/api/admin/setup', async ({ request, env }) => {
   const originError = badOrigin(request);
   if (originError) return originError;
