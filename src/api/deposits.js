@@ -10,6 +10,16 @@ async function ensureDepositTables(env) {
     updated_at INTEGER NOT NULL
   )`).run();
   await env.DB.prepare(`INSERT OR IGNORE INTO deposit_settings (id, trc20_address, erc20_address, minimum_deposit, updated_at) VALUES (1, '', '', 151, ?)`).bind(Math.floor(Date.now() / 1000)).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    whatsapp_1 TEXT NOT NULL DEFAULT '',
+    whatsapp_2 TEXT NOT NULL DEFAULT '',
+    whatsapp_3 TEXT NOT NULL DEFAULT '',
+    bonus_enabled INTEGER NOT NULL DEFAULT 0,
+    bonus_percent REAL NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO admin_settings (id, updated_at) VALUES (1, ?)`).bind(Math.floor(Date.now() / 1000)).run();
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS deposit_requests (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
