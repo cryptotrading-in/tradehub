@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tradehub Admin</title>
   <link rel="stylesheet" href="/styles.css" />
+  <style>html.auth-check body{visibility:hidden}</style>
+  <script>document.documentElement.classList.add('auth-check');fetch('/api/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
 </head>
 <body class="shell-page admin-shell-page">
   <div class="app-shell admin-shell">
@@ -12,8 +14,8 @@
       <div class="brand">TRADE<span>HUB</span><small>ADMIN</small></div>
       <nav class="shell-nav">
         <button class="nav-item active" type="button">Overview</button>
-        <button class="nav-item" type="button">Users</button>
-        <button class="nav-item" type="button">Rounds</button>
+        <button class="nav-item" type="button" onclick="location.href='/admin/users.html'">Users</button>
+        <button class="nav-item" type="button" onclick="location.href='/admin.html'">Rounds</button>
         <button class="nav-item" type="button">Orders</button>
         <button class="nav-item" type="button">Settings</button>
       </nav>
@@ -33,10 +35,12 @@
         <section class="shell-hero glass-card">
           <span class="label">Admin shell</span>
           <h2>Professional management workspace.</h2>
-          <p>UI structure only. No authentication, database, trading, wallet, or business logic is connected yet.</p>
+          <p>Admin authentication is connected. Use Users to create staff accounts and Rounds to manage the existing round configuration.</p>
+          <button type="button" onclick="logout()">Logout</button>
         </section>
       </main>
     </div>
   </div>
+<script>async function logout(){await fetch('/api/admin/logout',{method:'POST'});location.replace('/admin/login.html')}</script>
 </body>
 </html>
