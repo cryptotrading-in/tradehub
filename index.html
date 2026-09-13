@@ -19,6 +19,8 @@
     .auth-user{display:none;margin-top:20px}
     .auth-user.is-visible{display:block}
     .auth-user strong{color:#f5f7fb}
+    .auth-status{display:none;margin-top:10px;font-size:13px;color:#29c98a;font-weight:700}
+    .auth-status.is-visible{display:block}
   </style>
 </head>
 <body class="shell-page">
@@ -48,6 +50,7 @@
             <a class="auth-cta-secondary" href="/signin/">Sign In</a>
           </div>
           <p id="auth-user" class="auth-user">Welcome, <strong id="auth-user-name"></strong>.</p>
+          <p id="auth-status" class="auth-status">● Account Active</p>
         </section>
       </main>
       <nav class="mobile-nav" aria-label="Mobile navigation">
@@ -97,10 +100,12 @@
   const authCta = document.getElementById('auth-cta');
   const authUser = document.getElementById('auth-user');
   const authUserName = document.getElementById('auth-user-name');
+  const authStatus = document.getElementById('auth-status');
   const pageTitle = document.getElementById('page-title');
 
   authCta.classList.remove('is-visible');
   authUser.classList.remove('is-visible');
+  authStatus.classList.remove('is-visible');
 
   const loadSession = async () => {
     try {
@@ -111,18 +116,22 @@
         if (name) {
           authUserName.textContent = name;
           authUser.classList.add('is-visible');
+          authStatus.classList.add('is-visible');
           if (normalize(location.pathname) === '/') pageTitle.textContent = `Welcome, ${name}`;
         } else {
           authUser.classList.remove('is-visible');
+          authStatus.classList.remove('is-visible');
           authCta.classList.add('is-visible');
         }
         authCta.classList.remove('is-visible');
       } else {
         authUser.classList.remove('is-visible');
+        authStatus.classList.remove('is-visible');
         authCta.classList.add('is-visible');
       }
     } catch {
       authUser.classList.remove('is-visible');
+      authStatus.classList.remove('is-visible');
       authCta.classList.add('is-visible');
     }
   };
@@ -142,7 +151,6 @@
     installButton.classList.add('is-visible');
     window.dispatchEvent(new CustomEvent('tradehubinstallavailable'));
   });
-
   window.tradehubInstall = async () => {
     if (!deferredInstallPrompt) return false;
     deferredInstallPrompt.prompt();
@@ -151,9 +159,7 @@
     installButton.classList.remove('is-visible');
     return choice.outcome === 'accepted';
   };
-
   installButton.addEventListener('click', () => window.tradehubInstall());
-
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     installButton.classList.remove('is-visible');
