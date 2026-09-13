@@ -9,9 +9,14 @@ import {
 
 route('GET', '/api/health', async ({ env }) => {
   const result = await env.DB.prepare('SELECT 1 AS connected').first();
+  const sessionTable = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sessions' LIMIT 1"
+  ).first();
+
   return Response.json({
     ok: true,
-    database: result?.connected === 1
+    database: result?.connected === 1,
+    sessions: sessionTable?.name === 'sessions'
   });
 });
 
