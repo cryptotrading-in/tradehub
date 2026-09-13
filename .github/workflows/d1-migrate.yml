@@ -66,4 +66,5 @@ jobs:
           echo "$response" | grep -q '"ok":true'
           echo "$response" | grep -q '"database":true'
           echo "$response" | grep -q '"sessions":true'
+          echo "$response" | grep -q '"users":true'
           echo "D1 migration and API verification passed."
