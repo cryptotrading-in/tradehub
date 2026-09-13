@@ -7,4 +7,5 @@ async function submitWithdraw(){const msg=$('withdrawMsg'),amount=Number($('with
 function removeOldAccountPanels(){['securityPanel','profilePanel','historyPanel','logoutPanel'].forEach(id=>$(id)?.remove());document.querySelectorAll('.security-panel,.profile-panel,.history-panel,.logout-panel').forEach(el=>el.remove())}
 function hook(){style();removeOldAccountPanels();const wb=document.querySelector('.wallet-withdraw');if(wb&&!wb.dataset.withdrawHook){wb.dataset.withdrawHook='1';wb.onclick=openWithdraw}}
 new MutationObserver(hook).observe(document.documentElement,{childList:true,subtree:true});hook();
+const a=document.createElement('script');a.src='/account-ui.js';a.defer=false;document.head.appendChild(a);
 })();
