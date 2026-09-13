@@ -51,6 +51,41 @@ route('POST', '/api/auth/signin', async ({ request, env }) => {
   return new Response(JSON.stringify({ ok: true, authenticated: true, user: { id: user.id, fullName: user.full_name, username: user.username, email: user.email, phone: user.phone } }), { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookieFor(session.token, 60 * 60 * 24 * 7) } });
 });
 
+route('POST', '/api/auth/forgot-password', async ({ request, env }) => {
+  if (!hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
+  let input;
+  try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
+
+  const identifier = typeof input?.identifier === 'string' ? input.identifier.trim() : '';
+  const recoveryPin = typeof input?.recoveryPin === 'string' ? input.recoveryPin.trim() : '';
+  const newPassword = typeof input?.newPassword === 'string' ? input.newPassword : '';
+  const confirmNewPassword = typeof input?.confirmNewPassword === 'string' ? input.confirmNewPassword : '';
+  if (!identifier || !/^\d{4,12}$/.test(recoveryPin)) return Response.json({ ok: false, error: 'Username/email and a valid Recovery PIN are required' }, { status: 400 });
+  if (newPassword.length < 8 || newPassword.length > 128) return Response.json({ ok: false, error: 'New password must be 8-128 characters' }, { status: 400 });
+  if (newPassword !== confirmNewPassword) return Response.json({ ok: false, error: 'Passwords do not match' }, { status: 400 });
+
+  const normalized = identifier.toLowerCase();
+  const user = await env.DB.prepare('SELECT id, recovery_pin_hash, recovery_pin_salt, recovery_pin_failed_attempts, recovery_pin_locked_until, status FROM users WHERE username = ? OR email = ? LIMIT 1').bind(normalized, normalized).first();
+  if (!user || user.status !== 'active') return Response.json({ ok: false, error: 'Invalid recovery details' }, { status: 401 });
+
+  const now = Math.floor(Date.now() / 1000);
+  if (user.recovery_pin_locked_until && user.recovery_pin_locked_until > now) return Response.json({ ok: false, error: 'Recovery is temporarily locked. Please try again later.' }, { status: 429 });
+
+  const validPin = await verifySecret(recoveryPin, user.recovery_pin_hash, user.recovery_pin_salt);
+  if (!validPin) {
+    const attempts = (user.recovery_pin_failed_attempts || 0) + 1;
+    const lockedUntil = attempts >= 5 ? now + 15 * 60 : null;
+    await env.DB.prepare('UPDATE users SET recovery_pin_failed_attempts = ?, recovery_pin_locked_until = ?, updated_at = ? WHERE id = ?').bind(attempts, lockedUntil, now, user.id).run();
+    return Response.json({ ok: false, error: 'Invalid recovery details' }, { status: 401 });
+  }
+
+  const password = await hashSecret(newPassword);
+  await env.DB.prepare('UPDATE users SET password_hash = ?, password_salt = ?, recovery_pin_failed_attempts = 0, recovery_pin_locked_until = NULL, updated_at = ? WHERE id = ?').bind(password.hash, password.salt, now, user.id).run();
+  await env.DB.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').bind(now, user.id).run();
+
+  return Response.json({ ok: true, passwordReset: true });
+});
+
 route('POST', '/api/session/logout', async ({ request, env }) => {
   if (isStateChangingRequest(request) && !hasTrustedOrigin(request)) return Response.json({ ok: false, error: 'Untrusted origin' }, { status: 403 });
   await revokeSession(request, env);
