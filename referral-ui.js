@@ -41,6 +41,25 @@ async function load(){
   $('referralHistory').innerHTML=rows.map(v=>{const status=String(v.status||'Pending');const cls='referral-status-'+status.toLowerCase();const reward=Number(v.reward_amount||0);const amount=Number(v.qualifying_amount||0);const date=v.created_at?new Date(Number(v.created_at)*1000).toLocaleString():'';return `<div class="referral-row"><span>Referral · ${esc(status)}<small>${esc(date)}${amount>0?' · Qualifying deposit '+money(amount)+' USDT':''}</small></span><b class="${cls}">${status==='Rewarded'?money(reward)+' USDT':'—'}</b></div>`}).join('')||'<div class="referral-msg">No referrals yet.</div>';
  }catch{msg.textContent='Referral information is temporarily unavailable.'}
 }
-function start(){if(location.pathname!=='/referral'&&location.pathname!=='/referral/')return;ensure();load()}
+function sync(){
+ const isReferral=location.pathname==='/referral'||location.pathname==='/referral/';
+ const section=ensure();
+ const hero=document.querySelector('.shell-hero');
+ if(section)section.style.display=isReferral?'block':'none';
+ if(hero)hero.style.display=isReferral?'none':'';
+ if(isReferral)load();
+}
+function hookNavigation(){
+ ['pushState','replaceState'].forEach(name=>{
+  const original=history[name];
+  if(original.__tradehubReferralHook)return;
+  const wrapped=function(){const result=original.apply(this,arguments);setTimeout(sync,0);return result};
+  wrapped.__tradehubReferralHook=true;
+  history[name]=wrapped;
+ });
+ window.addEventListener('popstate',()=>setTimeout(sync,0));
+ document.addEventListener('click',e=>{if(e.target.closest('[data-r]'))setTimeout(sync,0)});
+}
+function start(){if(location.pathname!=='/referral'&&location.pathname!=='/referral/')return;hookNavigation();ensure();load()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
