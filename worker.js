@@ -1,5 +1,6 @@
 import { dispatch } from './src/api/router.js';
 import './src/api/routes.js';
+import './src/api/withdrawals.js';
 
 export default {
   async fetch(request, env) {
@@ -11,8 +12,8 @@ export default {
 
     // These are client-side SPA routes. On a hard refresh, always serve the
     // existing index shell with a fresh GET request. Do not reuse the incoming
-    // Request object/body when creating the asset request; that can throw a
-    // Worker runtime exception on refresh.
+    // Request object/body when creating the asset request; that can throw in the
+    // Worker runtime on refresh.
     if (['/rounds', '/rounds/', '/wallet', '/wallet/', '/account', '/account/'].includes(url.pathname)) {
       const indexRequest = new Request(new URL('/index.html', request.url), {
         method: 'GET',
