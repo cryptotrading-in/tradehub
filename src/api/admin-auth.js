@@ -1,3 +1,4 @@
+import { route } from './router.js';
 import { clearSessionCookie, createSession, getSession, hasTrustedOrigin, sessionCookieFor, requireSession } from './session.js';
 import { hashSecret, normalizeEmail, normalizeUsername, verifySecret } from './auth.js';
 
@@ -50,7 +51,6 @@ route('POST', '/api/admin/setup', async ({ request, env }) => {
   try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
   const existing = await masterAccount(env);
   if (existing) return Response.json({ ok: false, error: 'Admin setup has already been completed' }, { status: 409 });
-
   const fullName = typeof input?.fullName === 'string' ? input.fullName.trim() : '';
   const email = typeof input?.email === 'string' ? normalizeEmail(input.email) : '';
   const password = typeof input?.password === 'string' ? input.password : '';
@@ -61,7 +61,6 @@ route('POST', '/api/admin/setup', async ({ request, env }) => {
   if (password.length < 8 || password.length > 128) return Response.json({ ok: false, error: 'Password must be 8-128 characters' }, { status: 400 });
   if (password !== confirmPassword) return Response.json({ ok: false, error: 'Passwords do not match' }, { status: 400 });
   if (!/^\d{4,12}$/.test(recoveryPin)) return Response.json({ ok: false, error: 'Recovery PIN must be 4-12 digits' }, { status: 400 });
-
   const passwordHash = await hashSecret(password);
   const pinHash = await hashSecret(recoveryPin);
   const now = Math.floor(Date.now() / 1000);
