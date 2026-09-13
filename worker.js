@@ -19,15 +19,28 @@ export default {
         method: 'GET',
         headers: request.headers,
       });
-      return env.ASSETS.fetch(indexRequest);
+      return withActivityFeed(await env.ASSETS.fetch(indexRequest), env);
     }
 
     const response = await env.ASSETS.fetch(request);
-    if (['/withdrawal-ui.js', '/account-ui.js'].includes(url.pathname)) {
+    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js'].includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
     }
+    if (url.pathname === '/' || url.pathname === '/index.html') return withActivityFeed(response, env);
     return response;
   }
 };
+
+async function withActivityFeed(response, env) {
+  const type = response.headers.get('content-type') || '';
+  if (!type.includes('text/html')) return response;
+  const html = await response.text();
+  if (html.includes('/activity-feed.js')) return new Response(html, response);
+  const updated = html.replace('</body>', '<script src="/activity-feed.js" defer></script></body>');
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  headers.delete('content-length');
+  return new Response(updated, {status: response.status, statusText: response.statusText, headers});
+}
