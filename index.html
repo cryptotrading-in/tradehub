@@ -6,16 +6,38 @@
   <title>Tradehub</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="foundation-preview">
-    <p class="eyebrow">TRADEHUB · DESIGN FOUNDATION</p>
-    <h1>Premium round-based trading experience.</h1>
-    <p class="intro">Design foundation only. No trading, wallet, authentication, or business logic has been added.</p>
-    <section class="component-grid" aria-label="Design foundation components">
-      <article class="glass-card"><span class="label">Primary action</span><button>Continue</button></article>
-      <article class="glass-card"><span class="label">Status</span><span class="status status-live">Ready</span></article>
-      <article class="glass-card"><span class="label">Input</span><input placeholder="Enter amount" /></article>
-    </section>
-  </main>
+<body class="shell-page">
+  <div class="app-shell client-shell">
+    <aside class="sidebar" aria-label="Client navigation">
+      <div class="brand">TRADE<span>HUB</span></div>
+      <nav class="shell-nav">
+        <button class="nav-item active" type="button">Home</button>
+        <button class="nav-item" type="button">Rounds</button>
+        <button class="nav-item" type="button">Wallet</button>
+        <button class="nav-item" type="button">Orders</button>
+        <button class="nav-item" type="button">Account</button>
+      </nav>
+    </aside>
+    <div class="shell-main">
+      <header class="topbar">
+        <button class="mobile-menu" type="button" aria-label="Open menu">☰</button>
+        <div><p class="eyebrow">TRADEHUB</p><h1>Premium trading workspace</h1></div>
+        <div class="topbar-status"><span class="status status-live">Ready</span></div>
+      </header>
+      <main class="shell-content">
+        <section class="shell-hero glass-card">
+          <span class="label">Client shell</span>
+          <h2>Your trading experience starts here.</h2>
+          <p>UI structure only. No authentication, wallet, trading, database, or business logic is connected yet.</p>
+        </section>
+      </main>
+      <nav class="mobile-nav" aria-label="Mobile navigation">
+        <button class="nav-item active" type="button">Home</button>
+        <button class="nav-item" type="button">Rounds</button>
+        <button class="nav-item" type="button">Wallet</button>
+        <button class="nav-item" type="button">Account</button>
+      </nav>
+    </div>
+  </div>
 </body>
 </html>
