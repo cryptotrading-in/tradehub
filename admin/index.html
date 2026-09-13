@@ -19,7 +19,7 @@
       .admin-shell.menu-open .admin-sidebar{z-index:40}
     }
   </style>
-  <script>document.documentElement.classList.add('auth-check');fetch('/api/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
+  <script>document.documentElement.classList.add('auth-check');fetch('/api/admin/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
 </head>
 <body class="shell-page admin-shell-page">
   <div class="app-shell admin-shell" id="adminShell">
