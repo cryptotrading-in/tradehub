@@ -56,6 +56,17 @@ async function ensureDepositTables(env) {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (deposit_id) REFERENCES deposit_requests(id) ON DELETE CASCADE
   )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallet_activity (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    reference_id TEXT,
+    type TEXT NOT NULL,
+    amount REAL NOT NULL,
+    balance_after REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Completed',
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`).run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_user_created ON deposit_requests(user_id, created_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_deposit_requests_status_created ON deposit_requests(status, created_at DESC)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_wallet_deposit_transactions_user_created ON wallet_deposit_transactions(user_id, created_at DESC)').run();
