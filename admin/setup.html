@@ -25,7 +25,7 @@
   </main>
 <script>
 (async()=>{const s=await fetch('/api/admin/status');const d=await s.json();if(!d.setupRequired)location.replace('/admin/login.html')})().catch(()=>{});
-document.getElementById('setupForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const msg=document.getElementById('msg');msg.textContent='Creating admin…';const r=await fetch('/api/admin/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){msg.textContent=d.error||'Setup failed';return}msg.textContent='Admin created. Opening Control Center…';location.replace('/admin/')})
+document.getElementById('setupForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const msg=document.getElementById('msg');msg.textContent='Creating admin…';const r=await fetch('/api/admin/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});const d=await r.json();if(!r.ok){msg.textContent=d.error||'Setup failed';return}msg.textContent='Admin created. Redirecting to Admin Sign In…';setTimeout(()=>location.replace('/admin/login.html'),300)})
 </script>
 </body>
 </html>
