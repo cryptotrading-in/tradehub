@@ -5,11 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tradehub Admin</title>
   <link rel="stylesheet" href="/styles.css" />
-  <style>html.auth-check body{visibility:hidden}</style>
+  <style>
+    html.auth-check body{visibility:hidden}
+    .admin-sidebar-footer{margin-top:auto;padding-top:24px}
+    .admin-sidebar{display:flex;flex-direction:column}
+    .admin-mobile-nav{display:none}
+    @media(max-width:720px){
+      .admin-sidebar{display:flex;position:fixed;z-index:30;left:0;top:0;bottom:0;width:min(280px,82vw);height:100vh;transform:translateX(-105%);transition:transform .28s ease;box-shadow:18px 0 50px rgba(0,0,0,.35)}
+      .admin-shell.menu-open .admin-sidebar{transform:translateX(0)}
+      .admin-mobile-nav{position:fixed;z-index:20;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border:1px solid var(--line);border-radius:18px;background:rgba(20,25,37,.9);box-shadow:var(--shadow-card);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+      .admin-mobile-nav .nav-item{padding:10px 4px;text-align:center;font-size:11px}
+      .admin-shell.menu-open::after{content:"";position:fixed;z-index:25;inset:0;background:rgba(0,0,0,.42)}
+      .admin-shell.menu-open .admin-sidebar{z-index:40}
+    }
+  </style>
   <script>document.documentElement.classList.add('auth-check');fetch('/api/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
 </head>
 <body class="shell-page admin-shell-page">
-  <div class="app-shell admin-shell">
+  <div class="app-shell admin-shell" id="adminShell">
     <aside class="sidebar admin-sidebar" aria-label="Admin navigation">
       <div class="brand">TRADE<span>HUB</span><small>ADMIN</small></div>
       <nav class="shell-nav">
@@ -26,7 +39,7 @@
 
     <div class="shell-main">
       <header class="topbar">
-        <button class="mobile-menu" type="button" aria-label="Open admin menu" aria-expanded="false">☰</button>
+        <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Open admin menu" aria-expanded="false">☰</button>
         <div>
           <p class="eyebrow">TRADEHUB · ADMIN</p>
           <h1>Control center</h1>
@@ -42,7 +55,22 @@
         </section>
       </main>
     </div>
+
+    <nav class="admin-mobile-nav" aria-label="Admin mobile navigation">
+      <button class="nav-item active" type="button">Overview</button>
+      <button class="nav-item" type="button" onclick="location.href='/admin/users.html'">Users</button>
+      <button class="nav-item" type="button" onclick="location.href='/admin.html'">Rounds</button>
+      <button class="nav-item" type="button" onclick="openAdminMenu()">Menu</button>
+    </nav>
   </div>
-<script>async function logout(){await fetch('/api/admin/logout',{method:'POST'});location.replace('/admin/login.html')}</script>
+<script>
+  const adminShell=document.getElementById('adminShell');
+  const mobileMenu=document.getElementById('mobileMenu');
+  function openAdminMenu(){adminShell.classList.add('menu-open');mobileMenu.setAttribute('aria-expanded','true');mobileMenu.textContent='✕'}
+  function closeAdminMenu(){adminShell.classList.remove('menu-open');mobileMenu.setAttribute('aria-expanded','false');mobileMenu.textContent='☰'}
+  mobileMenu.addEventListener('click',()=>adminShell.classList.contains('menu-open')?closeAdminMenu():openAdminMenu());
+  adminShell.addEventListener('click',e=>{if(adminShell.classList.contains('menu-open')&&e.target===adminShell)closeAdminMenu()});
+  async function logout(){await fetch('/api/admin/logout',{method:'POST'});location.replace('/admin/login.html')}
+</script>
 </body>
 </html>
