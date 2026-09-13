@@ -17,12 +17,9 @@ export async function dispatch(request, env) {
     return await handler({ request, env, url });
   } catch (error) {
     console.error('API error', error);
+    const diagnostic = error instanceof Error ? error.message : String(error);
     return Response.json(
-      {
-        ok: false,
-        error: 'Internal server error',
-        diagnostic: error instanceof Error ? error.message : String(error)
-      },
+      { ok: false, error: diagnostic ? `Internal server error: ${diagnostic}` : 'Internal server error' },
       { status: 500 }
     );
   }
