@@ -152,6 +152,15 @@ route('GET', '/api/admin/staff', async ({ request, env }) => {
   return Response.json({ ok: true, staff: result.results || [] });
 });
 
+route('GET', '/api/admin/clients', async ({ request, env }) => {
+  const auth = await requireSession(request, env, 'admin');
+  if (!auth.ok) return auth.response;
+  const caller = await env.DB.prepare("SELECT role, status FROM admin_accounts WHERE id = ? LIMIT 1").bind(auth.session.user_id).first();
+  if (!caller || caller.status !== 'active') return Response.json({ ok: false, error: 'Admin access required' }, { status: 403 });
+  const result = await env.DB.prepare("SELECT id, full_name, username, email, phone, status, created_at, updated_at FROM users ORDER BY created_at DESC").all();
+  return Response.json({ ok: true, clients: result.results || [] });
+});
+
 route('POST', '/api/admin/logout', async ({ request, env }) => {
   const session = await getSession(request, env, 'admin');
   if (session?.role === 'admin') {
