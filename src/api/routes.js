@@ -7,6 +7,7 @@ import './admin-auth.js';
 import './account-history.js';
 import './admin-settings.js';
 import './activity-feed.js';
+import './referrals.js';
 
 route('GET', '/api/health', async ({ env }) => {
   const result = await env.DB.prepare('SELECT 1 AS connected').first();
