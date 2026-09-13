@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tradehub · Clients</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    html.auth-check body{visibility:hidden}
+    .wrap{max-width:1100px;margin:30px auto;padding:20px}
+    .client-list{margin-top:20px;display:grid;gap:10px}
+    .client{padding:15px;border-radius:12px;background:#ffffff08;border:1px solid #ffffff12;display:grid;gap:5px}
+    .client strong{font-size:16px}.muted{opacity:.7;font-size:13px}.empty{opacity:.7;padding:20px 0}
+  </style>
+  <script>document.documentElement.classList.add('auth-check');fetch('/api/admin/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
+</head>
+<body class="shell-page">
+  <main class="wrap">
+    <section class="glass-card" style="padding:22px">
+      <span class="label">TRADEHUB · CLIENTS</span>
+      <h1>Registered Clients</h1>
+      <p>All client accounts created through the website are listed here.</p>
+      <div class="client-list" id="clients"><div class="empty">Loading clients…</div></div>
+    </section>
+  </main>
+<script>
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function dateText(v){if(!v)return '—';const d=new Date(Number(v)*1000);return Number.isNaN(d.getTime())?'—':d.toLocaleString()}
+async function loadClients(){
+  const box=document.getElementById('clients');
+  try{
+    const r=await fetch('/api/admin/clients');
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Unable to load clients');
+    box.innerHTML=(d.clients||[]).map(x=>`<article class="client"><strong>${escapeHtml(x.full_name)}</strong><div class="muted">Username: @${escapeHtml(x.username)}</div><div class="muted">Email: ${escapeHtml(x.email)}</div><div class="muted">Phone: ${escapeHtml(x.phone)}</div><div class="muted">Status: ${escapeHtml(x.status)} · Joined: ${escapeHtml(dateText(x.created_at))}</div></article>`).join('')||'<div class="empty">No registered clients yet.</div>';
+  }catch(e){box.innerHTML=`<div class="empty">${escapeHtml(e.message||'Unable to load clients')}</div>`}
+}
+loadClients();
+</script>
+</body>
+</html>
