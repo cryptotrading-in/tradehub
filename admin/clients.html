@@ -8,9 +8,17 @@
   <style>
     html.auth-check body{visibility:hidden}
     .wrap{max-width:1100px;margin:30px auto;padding:20px}
-    .client-list{margin-top:20px;display:grid;gap:10px}
-    .client{padding:15px;border-radius:12px;background:#ffffff08;border:1px solid #ffffff12;display:grid;gap:5px}
-    .client strong{font-size:16px}.muted{opacity:.7;font-size:13px}.empty{opacity:.7;padding:20px 0}
+    .search{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff08;color:inherit;outline:none;margin-top:14px}
+    .table-wrap{margin-top:20px;overflow-x:auto;border:1px solid #ffffff12;border-radius:12px}
+    .clients-table{width:100%;border-collapse:collapse;min-width:760px}
+    .clients-table th,.clients-table td{padding:13px 14px;text-align:left;border-bottom:1px solid #ffffff10}
+    .clients-table th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
+    .clients-table tr:last-child td{border-bottom:0}
+    .client-id{display:inline-flex;align-items:center;gap:7px}
+    .copy-btn{padding:5px 8px;border:1px solid #ffffff22;border-radius:7px;background:#ffffff08;color:inherit;cursor:pointer;font-size:12px}
+    .status{font-size:12px}
+    .empty{opacity:.7;padding:20px;text-align:center}
+    @media(max-width:720px){.wrap{margin:12px auto;padding:12px}.clients-table{min-width:700px}}
   </style>
   <script>document.documentElement.classList.add('auth-check');fetch('/api/admin/session').then(r=>r.json()).then(s=>{if(!s.authenticated||s.session?.role!=='admin')location.replace('/admin/login.html');else document.documentElement.classList.remove('auth-check')}).catch(()=>location.replace('/admin/login.html'));</script>
 </head>
@@ -19,22 +27,29 @@
     <section class="glass-card" style="padding:22px">
       <span class="label">TRADEHUB · CLIENTS</span>
       <h1>Registered Clients</h1>
-      <p>All client accounts created through the website are listed here.</p>
-      <div class="client-list" id="clients"><div class="empty">Loading clients…</div></div>
+      <input class="search" id="search" type="search" placeholder="Search clients by name, client ID, email or phone..." autocomplete="off" />
+      <div class="table-wrap">
+        <table class="clients-table">
+          <thead><tr><th>Name</th><th>Client ID</th><th>Email</th><th>Phone Number</th><th>Account Status</th></tr></thead>
+          <tbody id="clients"><tr><td colspan="5" class="empty">Loading clients…</td></tr></tbody>
+        </table>
+      </div>
     </section>
   </main>
 <script>
+let clients=[];
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function dateText(v){if(!v)return '—';const d=new Date(Number(v)*1000);return Number.isNaN(d.getTime())?'—':d.toLocaleString()}
-async function loadClients(){
-  const box=document.getElementById('clients');
-  try{
-    const r=await fetch('/api/admin/clients');
-    const d=await r.json();
-    if(!r.ok)throw new Error(d.error||'Unable to load clients');
-    box.innerHTML=(d.clients||[]).map(x=>`<article class="client"><strong>${escapeHtml(x.full_name)}</strong><div class="muted">Username: @${escapeHtml(x.username)}</div><div class="muted">Email: ${escapeHtml(x.email)}</div><div class="muted">Phone: ${escapeHtml(x.phone)}</div><div class="muted">Status: ${escapeHtml(x.status)} · Joined: ${escapeHtml(dateText(x.created_at))}</div></article>`).join('')||'<div class="empty">No registered clients yet.</div>';
-  }catch(e){box.innerHTML=`<div class="empty">${escapeHtml(e.message||'Unable to load clients')}</div>`}
+function renderClients(){
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  const rows=clients.filter(x=>[x.full_name,x.id,x.email,x.phone].some(v=>String(v??'').toLowerCase().includes(q)));
+  document.getElementById('clients').innerHTML=rows.map(x=>`<tr><td>${escapeHtml(x.full_name)}</td><td><span class="client-id"><span>${escapeHtml(x.id)}</span><button class="copy-btn" type="button" onclick="copyClientId('${escapeHtml(x.id)}',this)">Copy</button></span></td><td>${escapeHtml(x.email)}</td><td>${escapeHtml(x.phone)}</td><td><span class="status">${escapeHtml(x.status)}</span></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No matching clients found.</td></tr>';
 }
+async function copyClientId(id,btn){try{await navigator.clipboard.writeText(id);const old=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=old,1200)}catch{}}
+async function loadClients(){
+  try{const r=await fetch('/api/admin/clients');const d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to load clients');clients=d.clients||[];renderClients()}
+  catch(e){document.getElementById('clients').innerHTML=`<tr><td colspan="5" class="empty">${escapeHtml(e.message||'Unable to load clients')}</td></tr>`}
+}
+document.getElementById('search').addEventListener('input',renderClients);
 loadClients();
 </script>
 </body>
