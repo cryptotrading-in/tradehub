@@ -137,19 +137,24 @@ route('POST', '/api/admin/deposits/action', async ({ request, env }) => {
   if (deposit.status !== 'Pending') return Response.json({ ok: false, error: 'Deposit request has already been reviewed' }, { status: 409 });
   const now = Math.floor(Date.now() / 1000);
   if (action === 'reject') {
-    await env.DB.prepare(`UPDATE deposit_requests SET status = 'Rejected', rejection_reason = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'Pending'`).bind(reason || 'Rejected by admin', now, guard.admin.id, id).run();
+    const rejected = await env.DB.prepare(`UPDATE deposit_requests SET status = 'Rejected', rejection_reason = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'Pending'`).bind(reason || 'Rejected by admin', now, guard.admin.id, id).run();
+    if (!rejected.meta?.changes) return Response.json({ ok: false, error: 'Deposit request was already reviewed' }, { status: 409 });
     return Response.json({ ok: true, status: 'Rejected' });
   }
   const wallet = await env.DB.prepare('SELECT balance FROM wallet_accounts WHERE user_id = ? LIMIT 1').bind(deposit.user_id).first();
   const current = Number(wallet?.balance || 0);
   const next = current + Number(deposit.amount);
-  const updated = await env.DB.prepare(`UPDATE deposit_requests SET status = 'Approved', rejection_reason = NULL, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'Pending'`).bind(now, guard.admin.id, id).run();
-  if (!updated.meta?.changes) return Response.json({ ok: false, error: 'Deposit request was already reviewed' }, { status: 409 });
-  if (wallet) {
-    await env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, deposit.user_id).run();
-  } else {
-    await env.DB.prepare('INSERT INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, ?, ?)').bind(deposit.user_id, Number(deposit.amount), now).run();
+  const txId = crypto.randomUUID();
+  const statements = [
+    env.DB.prepare(`UPDATE deposit_requests SET status = 'Approved', rejection_reason = NULL, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'Pending'`).bind(now, guard.admin.id, id),
+    wallet ? env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(next, now, deposit.user_id) : env.DB.prepare('INSERT INTO wallet_accounts (user_id, balance, updated_at) VALUES (?, ?, ?)').bind(deposit.user_id, Number(deposit.amount), now),
+    env.DB.prepare(`INSERT INTO wallet_deposit_transactions (id, user_id, deposit_id, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, 'Completed', ?)`).bind(txId, deposit.user_id, deposit.id, Number(deposit.amount), next, now)
+  ];
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    console.error('Deposit approval transaction failed', error);
+    return Response.json({ ok: false, error: 'Deposit approval could not be completed safely' }, { status: 500 });
   }
-  await env.DB.prepare(`INSERT INTO wallet_deposit_transactions (id, user_id, deposit_id, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, 'Completed', ?)`).bind(crypto.randomUUID(), deposit.user_id, deposit.id, Number(deposit.amount), next, now).run();
   return Response.json({ ok: true, status: 'Approved', credited: Number(deposit.amount), balance: next });
 });
