@@ -18,7 +18,11 @@ export async function dispatch(request, env) {
   } catch (error) {
     console.error('API error', error);
     return Response.json(
-      { ok: false, error: 'Internal server error' },
+      {
+        ok: false,
+        error: 'Internal server error',
+        diagnostic: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
