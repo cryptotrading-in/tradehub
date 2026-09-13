@@ -9,12 +9,16 @@ export default {
       return dispatch(request, env);
     }
 
-    // Client navigation uses history.pushState() for these SPA routes.
-    // On a hard refresh, serve the existing app shell instead of treating
-    // /rounds, /wallet, or /account as standalone asset paths.
+    // These are client-side SPA routes. On a hard refresh, always serve the
+    // existing index shell with a fresh GET request. Do not reuse the incoming
+    // Request object/body when creating the asset request; that can throw a
+    // Worker runtime exception on refresh.
     if (['/rounds', '/rounds/', '/wallet', '/wallet/', '/account', '/account/'].includes(url.pathname)) {
-      const indexUrl = new URL('/index.html', request.url);
-      return env.ASSETS.fetch(new Request(indexUrl, request));
+      const indexRequest = new Request(new URL('/index.html', request.url), {
+        method: 'GET',
+        headers: request.headers,
+      });
+      return env.ASSETS.fetch(indexRequest);
     }
 
     return env.ASSETS.fetch(request);
