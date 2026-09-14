@@ -9,21 +9,27 @@
   const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   const money=n=>Number(n||0).toFixed(2);
   const text=a=>a.demo?`${a.name} ${a.text}${a.amount?` ${money(a.amount)} USDT`:''}`:`${a.name} ${a.type==='deposit'?'deposited':a.type==='withdrawal'?'withdrew':a.type==='login'?'logged in':a.type==='referral_bonus'?'received referral bonus':a.type==='bonus'?'received bonus':'completed a round'}${a.amount?` ${money(a.amount)} USDT`:''}`;
+  let refreshData=async()=>{};
   function install(){
     if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
-    if(document.getElementById('tradehubActivityFeed'))return;
+    let box=document.getElementById('tradehubActivityFeed');
+    if(box){box.style.display='block';return;}
     const home=document.querySelector('.shell-content');
     if(!home){setTimeout(install,100);return;}
-    const style=document.createElement('style');
-    style.id='tradehubActivityFeedStyle';
-    style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
-    document.head.appendChild(style);
-    const box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
+    let style=document.getElementById('tradehubActivityFeedStyle');
+    if(!style){
+      style=document.createElement('style');
+      style.id='tradehubActivityFeedStyle';
+      style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
+      document.head.appendChild(style);
+    }
+    box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
     const hero=home.querySelector('.shell-hero');
     if(hero)hero.insertAdjacentElement('afterend',box);else home.appendChild(box);
     let real=[],idx=0;
-    async function refresh(){try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}}
+    refreshData=async()=>{try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}};
     function next(){
+      if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
       const pool=real.length?real.concat(FAKE):FAKE;
       if(!pool.length)return;
       const a=pool[idx%pool.length];idx++;
@@ -32,7 +38,24 @@
       requestAnimationFrame(()=>item.classList.add('show'));
       setTimeout(()=>item.classList.remove('show'),1800);
     }
-    refresh();setTimeout(next,500);setInterval(next,2400);setInterval(refresh,12000);
+    refreshData();setTimeout(next,500);setInterval(next,2400);setInterval(refreshData,12000);
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+  function sync(){
+    const isHome=location.pathname==='/'||location.pathname==='/index.html';
+    const box=document.getElementById('tradehubActivityFeed');
+    if(!isHome){if(box)box.style.display='none';return;}
+    install();
+  }
+  function hookNavigation(){
+    ['pushState','replaceState'].forEach(name=>{
+      const original=history[name];
+      if(original.__tradehubActivityFeedHook)return;
+      const wrapped=function(){const result=original.apply(this,arguments);setTimeout(sync,0);return result};
+      wrapped.__tradehubActivityFeedHook=true;
+      history[name]=wrapped;
+    });
+    window.addEventListener('popstate',()=>setTimeout(sync,0));
+  }
+  function start(){hookNavigation();sync()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
