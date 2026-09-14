@@ -19,7 +19,7 @@ export default {
     }
 
     const response = await env.ASSETS.fetch(request);
-    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js', '/home-title-fix.js', '/referral-ui.js'].includes(url.pathname)) {
+    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js', '/home-title-fix.js', '/referral-ui.js', '/home-rules.js'].includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
@@ -34,6 +34,7 @@ async function withActivityFeed(response, env, pathname = '/') {
   const scripts = [];
   const isHome = pathname === '/' || pathname === '/index.html';
   if (isHome && !html.includes('/activity-feed.js')) scripts.push('<script src="/activity-feed.js?v=feed-v3" defer></script>');
+  if (isHome && !html.includes('/home-rules.js')) scripts.push('<script src="/home-rules.js?v=rules-v1" defer></script>');
   if (!html.includes('/home-title-fix.js')) scripts.push('<script src="/home-title-fix.js" defer></script>');
   if (pathname === '/referral' || pathname === '/referral/') scripts.push('<script src="/referral-ui.js" defer></script>');
   if (!scripts.length) return new Response(html, response);
