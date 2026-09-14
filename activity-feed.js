@@ -20,22 +20,41 @@
     if(!style){
       style=document.createElement('style');
       style.id='tradehubActivityFeedStyle';
-      style.textContent='#tradehubActivityFeed{position:fixed;z-index:100;display:block!important;top:96px;left:50%;transform:translateX(-50%);margin:0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;display:block!important;padding:10px 12px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#000;color:#fff!important;box-shadow:0 8px 20px rgba(0,0,0,.35);font-size:12px;font-weight:700;line-height:1.4;opacity:1!important;transform:none!important}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#fff}@media(max-width:360px){#tradehubActivityFeed{display:block!important;width:94%;top:84px}}';
+      style.textContent=`#tradehubActivityFeed{position:relative;z-index:2;display:block!important;width:100%;height:220px;margin:24px 0 0;overflow:hidden;pointer-events:none}#tradehubActivityFeed .thaf-item{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;display:flex!important;align-items:center;min-height:36px;padding:5px 2px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:800;line-height:1.35;letter-spacing:.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent!important;border:0!important;box-shadow:none!important;opacity:0;transform:translate3d(0,20px,0) scale(.985);clip-path:inset(0 0 0 0);transition:transform .62s cubic-bezier(.16,1,.3,1),opacity .48s ease,clip-path .62s cubic-bezier(.16,1,.3,1);will-change:transform,opacity,clip-path}#tradehubActivityFeed .thaf-item.is-live{opacity:1;transform:translate3d(0,calc(var(--i)*-40px),0) scale(1)}#tradehubActivityFeed .thaf-item.is-exit{opacity:0;transform:translate3d(0,-240px,0) scale(.96);clip-path:inset(0 0 100% 0)}#tradehubActivityFeed .thaf-text{background:linear-gradient(90deg,#ffffff 0%,#b9c6ff 34%,#8f7cff 68%,#6fffd0 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,108,255,.16)}#tradehubActivityFeed .thaf-dot{width:7px;height:7px;flex:0 0 7px;margin:0 9px 0 2px;border-radius:50%;background:linear-gradient(135deg,#29c98a,#7c6cff);box-shadow:0 0 12px rgba(41,201,138,.42)}@media(max-width:560px){#tradehubActivityFeed{height:215px;margin-top:20px}#tradehubActivityFeed .thaf-item{font-size:12px}#tradehubActivityFeed .thaf-item.is-live{transform:translate3d(0,calc(var(--i)*-39px),0)}}`;
       document.head.appendChild(style);
     }
     box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
     const hero=home.querySelector('.shell-hero');
-    if(hero)hero.insertAdjacentElement('afterend',box);else home.appendChild(box);
-    let real=[],idx=0;
+    if(hero)hero.appendChild(box);else home.appendChild(box);
+    let real=[],idx=0,visible=[];
     refreshData=async()=>{try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}};
+    function pool(){return real.length?real.concat(FAKE):FAKE}
+    function renderPositions(){
+      visible.forEach((el,i)=>{el.style.setProperty('--i',i);requestAnimationFrame(()=>el.classList.add('is-live'))});
+    }
+    function add(a){
+      const el=document.createElement('div');
+      el.className='thaf-item';
+      el.innerHTML=`<span class="thaf-dot" aria-hidden="true"></span><span class="thaf-text">${esc(text(a))}</span>`;
+      box.appendChild(el);
+      visible.push(el);
+      if(visible.length>5){
+        const old=visible.shift();
+        old.classList.remove('is-live');
+        old.classList.add('is-exit');
+        setTimeout(()=>old.remove(),650);
+      }
+      renderPositions();
+    }
     function next(){
       if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
-      const pool=real.length?real.concat(FAKE):FAKE;
-      if(!pool.length)return;
-      const a=pool[idx%pool.length];idx++;
-      box.innerHTML=`<div class="thaf-item"><span class="thaf-dot">●</span>${esc(text(a))}</div>`;
+      const p=pool();if(!p.length)return;
+      add(p[idx%p.length]);idx++;
     }
-    refreshData();setTimeout(next,500);setInterval(next,2400);setInterval(refreshData,12000);
+    refreshData();
+    for(let i=0;i<5;i++)setTimeout(next,i*120);
+    setInterval(next,2400);
+    setInterval(refreshData,12000);
   }
   function sync(){
     const isHome=location.pathname==='/'||location.pathname==='/index.html';
