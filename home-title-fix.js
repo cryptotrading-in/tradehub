@@ -44,11 +44,6 @@
   function start(){
     hookNavigation();
     sync();
-    const root=document.querySelector('.shell-content');
-    if(root&&!root.__tradehubHomeHeroObserver){
-      new MutationObserver(()=>{if(home())paint()}).observe(root,{childList:true,subtree:true});
-      root.__tradehubHomeHeroObserver=true;
-    }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
