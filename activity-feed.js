@@ -9,7 +9,6 @@
   const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   const money=n=>Number(n||0).toFixed(2);
   const text=a=>a.demo?`${a.name} ${a.text}${a.amount?` ${money(a.amount)} USDT`:''}`:`${a.name} ${a.type==='deposit'?'deposited':a.type==='withdrawal'?'withdrew':a.type==='login'?'logged in':a.type==='referral_bonus'?'received referral bonus':a.type==='bonus'?'received bonus':'completed a round'}${a.amount?` ${money(a.amount)} USDT`:''}`;
-  let refreshData=async()=>{};
   function install(){
     if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
     let box=document.getElementById('tradehubActivityFeed');
@@ -26,9 +25,7 @@
     box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
     const hero=home.querySelector('.shell-hero');
     if(hero)hero.appendChild(box);else home.appendChild(box);
-    let real=[],idx=0,visible=[];
-    refreshData=async()=>{try{const r=await fetch('/api/activity-feed',{credentials:'same-origin',cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)real=(d.activities||[]).map(a=>({...a,demo:false}));}catch{}};
-    function pool(){return real.length?real.concat(FAKE):FAKE}
+    let idx=0,visible=[];
     function renderPositions(){
       const step=window.matchMedia('(max-width:560px)').matches?39:40;
       visible.forEach((el,i)=>{el.style.setProperty('--y',`${-i*step}px`);requestAnimationFrame(()=>el.classList.add('is-live'))});
@@ -49,13 +46,11 @@
     }
     function next(){
       if(location.pathname!=='/'&&location.pathname!=='/index.html')return;
-      const p=pool();if(!p.length)return;
-      add(p[idx%p.length]);idx++;
+      add(FAKE[idx%FAKE.length]);
+      idx++;
     }
-    refreshData();
     for(let i=0;i<5;i++)setTimeout(next,i*120);
     setInterval(next,2400);
-    setInterval(refreshData,12000);
   }
   function sync(){
     const isHome=location.pathname==='/'||location.pathname==='/index.html';
