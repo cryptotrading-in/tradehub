@@ -20,7 +20,7 @@
     if(!style){
       style=document.createElement('style');
       style.id='tradehubActivityFeedStyle';
-      style.textContent='#tradehubActivityFeed{position:relative;z-index:1;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;padding:8px 12px;border:1px solid #ffffff12;border-radius:12px;background:rgba(12,16,27,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:1.35;color:#d8deea;opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .55s ease}.thaf-item.show{opacity:1;transform:translateY(0)}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#29c98a}@media(max-width:360px){#tradehubActivityFeed{display:none}}';
+      style.textContent='#tradehubActivityFeed{position:relative;z-index:5;display:block!important;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;display:block!important;padding:10px 12px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#000;color:#fff!important;box-shadow:0 8px 20px rgba(0,0,0,.35);font-size:12px;font-weight:700;line-height:1.4;opacity:1!important;transform:none!important}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#fff}@media(max-width:360px){#tradehubActivityFeed{display:block!important;width:94%}}';
       document.head.appendChild(style);
     }
     box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
@@ -34,9 +34,6 @@
       if(!pool.length)return;
       const a=pool[idx%pool.length];idx++;
       box.innerHTML=`<div class="thaf-item"><span class="thaf-dot">●</span>${esc(text(a))}</div>`;
-      const item=box.firstElementChild;
-      requestAnimationFrame(()=>item.classList.add('show'));
-      setTimeout(()=>item.classList.remove('show'),1800);
     }
     refreshData();setTimeout(next,500);setInterval(next,2400);setInterval(refreshData,12000);
   }
