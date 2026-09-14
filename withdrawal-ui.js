@@ -7,6 +7,7 @@ async function submitWithdraw(){const msg=$('withdrawMsg'),amount=Number($('with
 function removeOldAccountPanels(){['securityPanel','profilePanel','historyPanel','logoutPanel'].forEach(id=>$(id)?.remove());document.querySelectorAll('.security-panel,.profile-panel,.history-panel,.logout-panel').forEach(el=>el.remove())}
 function hook(){style();removeOldAccountPanels();const wb=document.querySelector('.wallet-withdraw');if(wb&&!wb.dataset.withdrawHook){wb.dataset.withdrawHook='1';wb.onclick=openWithdraw}const db=$('depositBtn');if(db&&!db.dataset.depositToggleHook){db.dataset.depositToggleHook='1';db.addEventListener('click',()=>{const panel=$('withdrawPanel');if(panel)panel.hidden=true})}}
 new MutationObserver(hook).observe(document.documentElement,{childList:true,subtree:true});hook();
+const feed=document.createElement('script');feed.src='/activity-feed.js?feed-init-v3';feed.defer=false;document.head.appendChild(feed);
 const a=document.createElement('script');a.src='/account-ui.js';a.defer=false;document.head.appendChild(a);
 document.addEventListener('click',e=>{const b=e.target.closest?.('[data-r]');if(!b)return;setTimeout(()=>{const account=document.getElementById('account');if(account)account.style.display=location.pathname.replace(/\/$/,'')==='/account'?'block':'none'},0)});
 })();
