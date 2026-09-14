@@ -20,7 +20,7 @@
     if(!style){
       style=document.createElement('style');
       style.id='tradehubActivityFeedStyle';
-      style.textContent='#tradehubActivityFeed{position:relative;z-index:5;display:block!important;margin:12px auto 0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;display:block!important;padding:10px 12px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#000;color:#fff!important;box-shadow:0 8px 20px rgba(0,0,0,.35);font-size:12px;font-weight:700;line-height:1.4;opacity:1!important;transform:none!important}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#fff}@media(max-width:360px){#tradehubActivityFeed{display:block!important;width:94%}}';
+      style.textContent='#tradehubActivityFeed{position:fixed;z-index:100;display:block!important;top:96px;left:50%;transform:translateX(-50%);margin:0;width:min(92%,390px);min-height:42px;pointer-events:none}.thaf-item{box-sizing:border-box;display:block!important;padding:10px 12px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#000;color:#fff!important;box-shadow:0 8px 20px rgba(0,0,0,.35);font-size:12px;font-weight:700;line-height:1.4;opacity:1!important;transform:none!important}.thaf-dot{display:inline-block;margin-right:6px;font-size:9px;color:#fff}@media(max-width:360px){#tradehubActivityFeed{display:block!important;width:94%;top:84px}}';
       document.head.appendChild(style);
     }
     box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
