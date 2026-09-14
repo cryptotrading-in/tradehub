@@ -10,10 +10,6 @@ export default {
       return dispatch(request, env);
     }
 
-    // These are client-side SPA routes. On a hard refresh, always serve the
-    // existing index shell with a fresh GET request. Do not reuse the incoming
-    // Request object/body when creating the asset request; that can throw in the
-    // Worker runtime on refresh.
     if (['/rounds', '/rounds/', '/wallet', '/wallet/', '/account', '/account/', '/referral', '/referral/'].includes(url.pathname)) {
       const indexRequest = new Request(new URL('/index.html', request.url), {
         method: 'GET',
@@ -36,7 +32,8 @@ export default {
 async function withActivityFeed(response, env, pathname = '/') {
   const html = await response.text();
   const scripts = [];
-  if (!html.includes('/activity-feed.js')) scripts.push('<script src="/activity-feed.js?v=feed-v2" defer></script>');
+  const isHome = pathname === '/' || pathname === '/index.html';
+  if (isHome && !html.includes('/activity-feed.js')) scripts.push('<script src="/activity-feed.js?v=feed-v3" defer></script>');
   if (!html.includes('/home-title-fix.js')) scripts.push('<script src="/home-title-fix.js" defer></script>');
   if (pathname === '/referral' || pathname === '/referral/') scripts.push('<script src="/referral-ui.js" defer></script>');
   if (!scripts.length) return new Response(html, response);
