@@ -43,11 +43,17 @@ async function load(){
 }
 function sync(){
  const isReferral=location.pathname==='/referral'||location.pathname==='/referral/';
- const section=ensure();
+ const section=$('referral');
  const hero=document.querySelector('.shell-hero');
- if(section)section.style.display=isReferral?'block':'none';
- if(hero)hero.style.display=isReferral?'none':'';
- if(isReferral)load();
+ if(!isReferral){
+  if(section)section.style.display='none';
+  if(hero)hero.style.display='';
+  return;
+ }
+ const current=ensure();
+ if(current)current.style.display='block';
+ if(hero)hero.style.display='none';
+ load();
 }
 function hookNavigation(){
  ['pushState','replaceState'].forEach(name=>{
@@ -58,8 +64,19 @@ function hookNavigation(){
   history[name]=wrapped;
  });
  window.addEventListener('popstate',()=>setTimeout(sync,0));
- document.addEventListener('click',e=>{if(e.target.closest('[data-r]'))setTimeout(sync,0)});
+ document.addEventListener('click',()=>setTimeout(sync,0),true);
+ const root=document.querySelector('.shell-content');
+ if(root&&!root.__tradehubReferralObserver){
+  const observer=new MutationObserver(()=>{
+   if(location.pathname!=='/referral'&&location.pathname!=='/referral/'){
+    const section=$('referral');
+    if(section)section.style.display='none';
+   }
+  });
+  observer.observe(root,{childList:true,subtree:true});
+  root.__tradehubReferralObserver=true;
+ }
 }
-function start(){if(location.pathname!=='/referral'&&location.pathname!=='/referral/')return;hookNavigation();ensure();load()}
+function start(){hookNavigation();sync()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
