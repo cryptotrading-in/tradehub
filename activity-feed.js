@@ -23,8 +23,7 @@
       document.head.appendChild(style);
     }
     box=document.createElement('div');box.id='tradehubActivityFeed';box.setAttribute('aria-live','polite');
-    const hero=home.querySelector('.shell-hero');
-    if(hero)hero.appendChild(box);else home.appendChild(box);
+    home.appendChild(box);
     let idx=0,visible=[];
     function renderPositions(){
       const step=window.matchMedia('(max-width:560px)').matches?39:40;
