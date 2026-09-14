@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tradehub-shell-v7';
+const CACHE_NAME = 'tradehub-shell-v8';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -34,8 +34,15 @@ self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
-  // API responses and dynamically updated UI scripts must never be served from the app-shell cache.
-  if (requestUrl.pathname.startsWith('/api/') || requestUrl.pathname === '/account-ui.js' || requestUrl.pathname === '/withdrawal-ui.js' || requestUrl.pathname === '/activity-feed.js') return;
+  // API responses and dynamically updated UI/runtime scripts must never be served from the app-shell cache.
+  if (
+    requestUrl.pathname.startsWith('/api/') ||
+    requestUrl.pathname === '/account-ui.js' ||
+    requestUrl.pathname === '/withdrawal-ui.js' ||
+    requestUrl.pathname === '/activity-feed.js' ||
+    requestUrl.pathname === '/home-title-fix.js' ||
+    requestUrl.pathname === '/referral-ui.js'
+  ) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
