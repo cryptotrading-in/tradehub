@@ -10,8 +10,8 @@
     if(hero)hero.style.display='block';
     const title=document.getElementById('title');
     const desc=document.getElementById('desc');
-    if(title)title.textContent=fullName?'Welcome, '+fullName:'';
-    if(desc)desc.textContent='';
+    if(title)title.textContent=fullName?'Welcome, '+fullName:'Your trading experience starts here.';
+    if(desc)desc.textContent=fullName?'':'Trade smarter with a simple, secure workspace.';
   }
   async function loadName(){
     if(!home()||loading)return;
