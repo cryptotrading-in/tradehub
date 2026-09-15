@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tradehub-shell-v8';
+const CACHE_NAME = 'tradehub-shell-v9';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -41,7 +41,9 @@ self.addEventListener('fetch', event => {
     requestUrl.pathname === '/withdrawal-ui.js' ||
     requestUrl.pathname === '/activity-feed.js' ||
     requestUrl.pathname === '/home-title-fix.js' ||
-    requestUrl.pathname === '/referral-ui.js'
+    requestUrl.pathname === '/referral-ui.js' ||
+    requestUrl.pathname === '/rounds-final-ui.js' ||
+    requestUrl.pathname === '/rounds-live-fix.js'
   ) return;
 
   if (event.request.mode === 'navigate') {
