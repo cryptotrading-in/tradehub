@@ -47,7 +47,6 @@ function sync(){
  const hero=document.querySelector('.shell-hero');
  if(!isReferral){
   if(section)section.style.display='none';
-  if(hero)hero.style.display='';
   return;
  }
  const current=ensure();
@@ -64,7 +63,6 @@ function hookNavigation(){
   history[name]=wrapped;
  });
  window.addEventListener('popstate',()=>setTimeout(sync,0));
- document.addEventListener('click',()=>setTimeout(sync,0),true);
  const root=document.querySelector('.shell-content');
  if(root&&!root.__tradehubReferralObserver){
   const observer=new MutationObserver(()=>{
