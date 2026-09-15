@@ -1,9 +1,9 @@
 (()=>{
   const loaded=new Set();
   const routes={
-    home:['/home-ui.js?v=home-v1','/activity-feed.js?v=feed-v4'],
+    home:['/home-ui.js?v=home-v2','/activity-feed.js?v=feed-v4'],
     rounds:['/rounds-final-ui.js?v=rounds-final-v2','/rounds-live-fix.js?v=rounds-live-v1'],
-    account:['/account-ui.js?v=account-v1'],
+    account:['/account-ui.js?v=account-v2'],
     referral:['/referral-ui.js?v=referral-v1']
   };
   const norm=p=>!p||p==='/index.html'?'/':p.replace(/\/$/,'')||'/';
@@ -29,7 +29,7 @@
   }
   function sync(){
     const list=routes[route()]||[];
-    list.reduce((p,src)=>p.then(()=>load(src)),Promise.resolve());
+    return list.reduce((p,src)=>p.then(()=>load(src)),Promise.resolve());
   }
   function closeMenuOnOutsideClick(e){
     const shell=document.querySelector('.client-shell');
@@ -45,7 +45,7 @@
       if(original.__tradehubRouteLoaderHook)return;
       const wrapped=function(){
         const result=original.apply(this,arguments);
-        setTimeout(sync,0);
+        setTimeout(()=>sync().then(()=>window.dispatchEvent(new PopStateEvent('popstate'))),0);
         return result;
       };
       wrapped.__tradehubRouteLoaderHook=true;
