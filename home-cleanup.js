@@ -2,7 +2,7 @@
   const isHome=()=>location.pathname==='/'||location.pathname==='/index.html';
   function apply(){
     const hero=document.querySelector('.shell-hero');
-    if(hero) hero.style.display=isHome()?'none':'';
+    if(hero&&!isHome())hero.style.display='';
   }
   function start(){apply();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
