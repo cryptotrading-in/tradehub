@@ -1,5 +1,0 @@
-Targeted verification note for PR #2.
-
-Root cause fixed in rounds-final-ui.js: patchResultButtons() now only mutates a RESULT button when its text is not already "View Result", preventing the MutationObserver self-trigger loop.
-
-No DB/auth/wallet/Home changes were made by this fix.
