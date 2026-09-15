@@ -22,21 +22,23 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4.131.1 whoami
 
-      - name: Read-only wallet reconciliation
+      - name: Compact read-only reconciliation
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          echo '=== Wallet balance ==='
-          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,printf('%.12f',balance) AS balance,updated_at FROM wallet_accounts ORDER BY user_id;"
-          echo '=== ALL wallet transactions, chronological ==='
-          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT id,user_id,trade_id,type,printf('%.12f',amount) AS amount,printf('%.12f',balance_after) AS balance_after,status,created_at FROM wallet_transactions ORDER BY created_at,id;"
-          echo '=== ALL round trades, chronological ==='
-          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT id,user_id,round_id,printf('%.12f',investment) AS investment,direction,printf('%.12f',gross_pnl) AS gross_pnl,printf('%.12f',fee) AS fee,printf('%.12f',net_pnl) AS net_pnl,result,status,started_at,settled_at,created_at FROM round_trades ORDER BY created_at,id;"
-          echo '=== Duplicate ROUND_PROFIT groups ==='
-          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,trade_id,COUNT(*) AS row_count,printf('%.12f',MIN(amount)) AS canonical_amount,printf('%.12f',SUM(amount)-MIN(amount)) AS excess_amount,GROUP_CONCAT(id) AS transaction_ids FROM wallet_transactions WHERE type='ROUND_PROFIT' AND trade_id IS NOT NULL GROUP BY user_id,trade_id HAVING COUNT(*) > 1 ORDER BY MIN(created_at),trade_id;"
-          echo '=== Round trades joined to wallet ledger ==='
-          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT t.id AS trade_id,t.status AS trade_status,printf('%.12f',t.investment) AS investment,printf('%.12f',t.net_pnl) AS net_pnl,printf('%.12f',(t.investment+t.net_pnl)) AS expected_payout,COUNT(w.id) AS ledger_rows,printf('%.12f',COALESCE(SUM(w.amount),0)) AS ledger_payout FROM round_trades t LEFT JOIN wallet_transactions w ON w.trade_id=t.id AND w.type='ROUND_PROFIT' WHERE t.user_id IN (SELECT user_id FROM wallet_accounts) GROUP BY t.id,t.status,t.investment,t.net_pnl ORDER BY t.created_at,t.id;"
+          echo '=== FINAL WALLET BALANCE ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,printf('%.12f',balance) AS balance FROM wallet_accounts ORDER BY user_id;"
+          echo '=== DUPLICATE ROUND_PROFIT GROUPS ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,trade_id,COUNT(*) AS ledger_rows,printf('%.12f',MIN(amount)) AS canonical_payout,printf('%.12f',SUM(amount)-MIN(amount)) AS excess_payout,GROUP_CONCAT(id) AS transaction_ids FROM wallet_transactions WHERE type='ROUND_PROFIT' AND trade_id IS NOT NULL GROUP BY user_id,trade_id HAVING COUNT(*)>1 ORDER BY MIN(created_at),trade_id;"
+          echo '=== DUPLICATE GROUPS WITH ROUND TRADE RECONCILIATION ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT t.id AS trade_id,printf('%.12f',t.investment) AS investment,printf('%.12f',t.net_pnl) AS net_pnl,printf('%.12f',(t.investment+t.net_pnl)) AS expected_payout,COUNT(w.id) AS ledger_rows,printf('%.12f',COALESCE(SUM(w.amount),0)) AS ledger_payout,printf('%.12f',COALESCE(SUM(w.amount),0)-MIN(w.amount)) AS excess_payout FROM round_trades t JOIN wallet_transactions w ON w.trade_id=t.id AND w.type='ROUND_PROFIT' GROUP BY t.id,t.investment,t.net_pnl HAVING COUNT(w.id)>1 ORDER BY t.created_at,t.id;"
+          echo '=== TOTAL CONFIRMED DUPLICATE EXCESS ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT printf('%.12f',COALESCE(SUM(excess_payout),0)) AS total_duplicate_excess FROM (SELECT SUM(amount)-MIN(amount) AS excess_payout FROM wallet_transactions WHERE type='ROUND_PROFIT' AND trade_id IS NOT NULL GROUP BY user_id,trade_id HAVING COUNT(*)>1);"
+          echo '=== ROUND TRADES WITH LEDGER MISMATCHES ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT t.id AS trade_id,t.status,printf('%.12f',t.investment) AS investment,printf('%.12f',t.net_pnl) AS net_pnl,printf('%.12f',(t.investment+t.net_pnl)) AS expected_payout,COUNT(w.id) AS ledger_rows,printf('%.12f',COALESCE(SUM(w.amount),0)) AS ledger_payout FROM round_trades t LEFT JOIN wallet_transactions w ON w.trade_id=t.id AND w.type='ROUND_PROFIT' WHERE t.user_id IN (SELECT user_id FROM wallet_accounts) GROUP BY t.id,t.status,t.investment,t.net_pnl HAVING COUNT(w.id)<>1 OR ABS(COALESCE(SUM(w.amount),0)-(t.investment+t.net_pnl))>0.00000001 ORDER BY t.created_at,t.id;"
+          echo '=== TRANSACTION TOTALS ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT type,COUNT(*) AS rows,printf('%.12f',SUM(amount)) AS total_amount FROM wallet_transactions GROUP BY type ORDER BY type;"
           echo '=== READ-ONLY RECONCILIATION COMPLETE ==='
           echo 'NO INSERT / UPDATE / DELETE EXECUTED'
