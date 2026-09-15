@@ -135,15 +135,17 @@ route('GET', '/api/rounds', async ({ request, env }) => {
   if (session.ok) {
     const wallet = await ensureWallet(env, session.session.user_id);
     balance = Number(wallet.balance);
-    const active = await env.DB.prepare("SELECT id FROM round_trades WHERE user_id = ? AND status = 'LOCKED'").bind(session.session.user_id).all();
+    const active = await env.DB.prepare("SELECT t.id FROM round_trades t JOIN rounds r ON r.id = t.round_id WHERE t.user_id = ? AND t.status = 'LOCKED' AND t.created_at >= r.updated_at").bind(session.session.user_id).all();
     for (const trade of active.results || []) await settleTrade(env, trade.id);
     const settledWallet = await ensureWallet(env, session.session.user_id);
     balance = Number(settledWallet.balance);
   }
   const latest = new Map();
   if (session.ok) {
-    const rows = await env.DB.prepare('SELECT * FROM round_trades WHERE user_id = ? ORDER BY created_at DESC').bind(session.session.user_id).all();
-    for (const trade of rows.results || []) if (!latest.has(trade.round_id)) latest.set(trade.round_id, trade);
+    for (const round of rounds.results || []) {
+      const trade = await env.DB.prepare('SELECT * FROM round_trades WHERE user_id = ? AND round_id = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 1').bind(session.session.user_id, round.id, Number(round.updated_at)).first();
+      if (trade) latest.set(round.id, trade);
+    }
   }
   return Response.json({ ok: true, cycle: { id: cycle.id, cycleKey: cycle.cycle_key, status: cycle.status }, balance, rounds: (rounds.results || []).map(r => roundPayload(r, balance, latest.get(r.id) || null)) });
 });
@@ -217,9 +219,11 @@ route('POST', '/api/admin/rounds', async ({ request, env }) => {
   const result = input?.result;
   if (![1,2].includes(roundNo) || !['UP','DOWN'].includes(direction) || !Number.isFinite(startAt) || !Number.isFinite(durationSeconds) || durationSeconds <= 0 || !Number.isFinite(profitPct) || profitPct < 0 || !Number.isFinite(feePct) || feePct < 0 || !['WIN','LOSS'].includes(result)) return Response.json({ ok: false, error: 'Invalid round configuration' }, { status: 400 });
   const cycle = await getCurrentCycle(env);
-  const existing = await env.DB.prepare('SELECT id FROM rounds WHERE cycle_id = ? AND round_no = ? LIMIT 1').bind(cycle.id, roundNo).first();
+  const existing = await env.DB.prepare('SELECT id, updated_at FROM rounds WHERE cycle_id = ? AND round_no = ? LIMIT 1').bind(cycle.id, roundNo).first();
   const now = nowSec();
   if (existing) {
+    const activeTrade = await env.DB.prepare("SELECT id FROM round_trades WHERE round_id = ? AND status = 'LOCKED' AND created_at >= ? LIMIT 1").bind(existing.id, Number(existing.updated_at)).first();
+    if (activeTrade) return Response.json({ ok: false, error: 'Round has an active trade and cannot be rescheduled yet' }, { status: 409 });
     await env.DB.prepare('UPDATE rounds SET direction = ?, start_at = ?, duration_seconds = ?, profit_pct = ?, fee_pct = ?, result = ?, updated_at = ? WHERE id = ?').bind(direction, startAt, durationSeconds, profitPct, feePct, result, now, existing.id).run();
   } else {
     await env.DB.prepare('INSERT INTO rounds (id, cycle_id, round_no, direction, start_at, duration_seconds, profit_pct, fee_pct, result, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(crypto.randomUUID(), cycle.id, roundNo, direction, startAt, durationSeconds, profitPct, feePct, result, now, now).run();
