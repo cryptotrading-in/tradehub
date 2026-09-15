@@ -1,0 +1,41 @@
+name: Tradehub Wallet Ledger Audit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Read-only D1 wallet ledger audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cloudflare authentication
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.131.1 whoami
+
+      - name: Audit wallet ledger (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          echo '=== Wallet account(s) ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT * FROM wallet_accounts ORDER BY user_id;"
+          echo '=== Wallet transaction schema ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "PRAGMA table_info(wallet_transactions);"
+          echo '=== All ROUND_PROFIT ledger rows ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT id,user_id,trade_id,type,amount,created_at FROM wallet_transactions WHERE type='ROUND_PROFIT' ORDER BY created_at,id;"
+          echo '=== ROUND_PROFIT grouped by trade_id ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,trade_id,COUNT(*) AS row_count,SUM(amount) AS total_amount,MIN(created_at) AS first_created_at,MAX(created_at) AS last_created_at,GROUP_CONCAT(id) AS transaction_ids FROM wallet_transactions WHERE type='ROUND_PROFIT' AND trade_id IS NOT NULL GROUP BY user_id,trade_id HAVING COUNT(*) > 1 ORDER BY last_created_at;"
+          echo '=== Ledger totals by type ==='
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,type,COUNT(*) AS row_count,ROUND(SUM(amount),8) AS total_amount FROM wallet_transactions GROUP BY user_id,type ORDER BY user_id,type;"
+          echo '=== Audit complete: READ ONLY; no INSERT/UPDATE/DELETE executed ==='
