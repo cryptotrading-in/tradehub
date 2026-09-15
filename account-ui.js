@@ -23,7 +23,7 @@ function ensure(){
  if(!isAccount())return null;
  style();ensureMenuItems();
  let section=$('account');
- if(!section){section=document.createElement('section');section.id='account';const hero=document.querySelector('.shell-hero');const content=document.querySelector('.shell-content');if(hero)hero.after(section);else content?.appendChild(section)}
+ if(!section){section=document.createElement('section');section.id='account';const content=document.querySelector('.shell-content');if(content)content.appendChild(section)}
  if(section.dataset.ready)return section;
  section.innerHTML=`<div class="account-grid">
   <div class="account-card"><h3>Profile</h3><div class="account-sub">Your account information</div><div class="account-fields"><div class="account-field"><label>Full Name</label><input id="accountFullName"></div><div class="account-field"><label>Username</label><input id="accountUsername" readonly></div><div class="account-field"><label>Email</label><input id="accountEmail" readonly></div><div class="account-field"><label>Phone</label><input id="accountPhone"></div><div class="account-field"><label>Unique Referral Code</label><input id="accountReferralCode" readonly></div></div><div class="account-actions"><button class="account-btn" id="accountReferralCopy" type="button">Copy Referral Code</button><button class="account-btn" id="accountProfileSave" type="button">Save Profile</button></div><div id="accountProfileMsg" class="account-msg"></div></div>
@@ -46,7 +46,6 @@ async function logout(){const {r,d}=await json('/api/session/logout',{method:'PO
 function renderAccount(p){
  const show=p==='/account';
  if(!show){$('account')?.style.setProperty('display','none');removeMenuItems();$('supportModal')?.remove();return}
- document.querySelector('.shell-hero')?.remove();
  const section=ensure();
  if(section)section.style.display='block';
  loadProfile();loadSecurity();loadHistory();
