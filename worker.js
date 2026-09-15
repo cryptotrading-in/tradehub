@@ -19,7 +19,7 @@ export default {
     }
 
     const response = await env.ASSETS.fetch(request);
-    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js', '/home-title-fix.js', '/referral-ui.js', '/home-rules.js', '/home-cleanup.js', '/rounds-final-ui.js', '/rounds-live-fix.js'].includes(url.pathname)) {
+    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js', '/home-title-fix.js', '/referral-ui.js', '/home-rules.js', '/home-cleanup.js', '/rounds-final-ui.js', '/rounds-live-fix.js', '/rounds-state-sync.js'].includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
@@ -39,6 +39,7 @@ async function withActivityFeed(response, env, pathname = '/') {
   if (isHome && !html.includes('/home-cleanup.js')) scripts.push('<script src="/home-cleanup.js?v=clean-v1" defer></script>');
   if (isRounds && !html.includes('/rounds-final-ui.js')) scripts.push('<script src="/rounds-final-ui.js?v=rounds-final-v2" defer></script>');
   if (isRounds && !html.includes('/rounds-live-fix.js')) scripts.push('<script src="/rounds-live-fix.js?v=rounds-live-v1" defer></script>');
+  if (isRounds && !html.includes('/rounds-state-sync.js')) scripts.push('<script src="/rounds-state-sync.js?v=rounds-sync-v1" defer></script>');
   if (!html.includes('/home-title-fix.js')) scripts.push('<script src="/home-title-fix.js" defer></script>');
   if (pathname === '/referral' || pathname === '/referral/') scripts.push('<script src="/referral-ui.js" defer></script>');
   if (!scripts.length) return new Response(html, response);
