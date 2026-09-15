@@ -31,6 +31,7 @@ self.addEventListener('fetch', event => {
     requestUrl.pathname.startsWith('/api/') ||
     requestUrl.pathname === '/account-ui.js' ||
     requestUrl.pathname === '/withdrawal-ui.js' ||
+    requestUrl.pathname === '/client-route-loader.js' ||
     requestUrl.pathname === '/activity-feed.js' ||
     requestUrl.pathname === '/home-ui.js' ||
     requestUrl.pathname === '/referral-ui.js' ||
