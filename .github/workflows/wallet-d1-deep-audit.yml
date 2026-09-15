@@ -1,0 +1,37 @@
+name: Tradehub Wallet D1 Deep Audit
+
+on:
+  push:
+    branches:
+      - cleanup/wallet-hero-and-diagnostic
+  workflow_dispatch:
+
+jobs:
+  deep-audit:
+    name: Validate duplicate wallet rows against trades
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cloudflare authentication
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.131.1 whoami
+
+      - name: Inspect affected trades and wallet state (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT id,user_id,investment,gross_pnl,fee,net_pnl,result,status,started_at,settled_at,created_at FROM round_trades WHERE id IN ('c581638c-c469-4d33-991c-da871173d705','1b6bed85-bdf1-4e16-ad93-4204b04c71ad','061af383-aa25-4cc3-bbcc-bba07711324d')"
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT id,user_id,trade_id,type,amount,balance_after,status,created_at FROM wallet_transactions WHERE trade_id IN ('c581638c-c469-4d33-991c-da871173d705','1b6bed85-bdf1-4e16-ad93-4204b04c71ad','061af383-aa25-4cc3-bbcc-bba07711324d') ORDER BY created_at,id"
+          npx --yes wrangler@4.131.1 d1 execute tradehub-db --remote --command "SELECT user_id,balance,updated_at FROM wallet_accounts WHERE user_id='88b54457-2621-4b64-938b-7a95db9bfb8a'"
+          echo 'DEEP AUDIT COMPLETE: read-only queries only'
