@@ -43,9 +43,7 @@ self.addEventListener('fetch', event => {
     requestUrl.pathname === '/home-title-fix.js' ||
     requestUrl.pathname === '/referral-ui.js' ||
     requestUrl.pathname === '/rounds-final-ui.js' ||
-    requestUrl.pathname === '/rounds-live-fix.js' ||
-    requestUrl.pathname === '/rounds-wallet-sync.js' ||
-    requestUrl.pathname === '/rounds-step3-buttons.js'
+    requestUrl.pathname === '/rounds-live-fix.js'
   ) return;
 
   if (event.request.mode === 'navigate') {
