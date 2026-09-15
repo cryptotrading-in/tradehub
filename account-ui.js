@@ -47,7 +47,6 @@ function renderAccount(p){
  const show=p==='/account';
  if(!show){$('account')?.style.setProperty('display','none');removeMenuItems();$('supportModal')?.remove();return}
  const section=ensure();
- const hero=document.querySelector('.shell-hero');if(hero)hero.style.display='none';
  if(section)section.style.display='block';
  loadProfile();loadSecurity();loadHistory();
 }
