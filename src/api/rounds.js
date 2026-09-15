@@ -103,25 +103,26 @@ async function ensureWallet(env, userId) {
   return await env.DB.prepare('SELECT user_id, balance FROM wallet_accounts WHERE user_id = ? LIMIT 1').bind(userId).first();
 }
 async function settleTrade(env, tradeId, now = nowSec()) {
-  const trade = await env.DB.prepare(`SELECT t.*, r.start_at, r.duration_seconds, r.profit_pct, r.fee_pct, r.result, r.direction AS round_direction
+  const trade = await env.DB.prepare(`SELECT t.*, r.round_no, r.start_at, r.duration_seconds, r.profit_pct, r.fee_pct, r.result, r.direction AS round_direction
     FROM round_trades t JOIN rounds r ON r.id = t.round_id WHERE t.id = ? LIMIT 1`).bind(tradeId).first();
   if (!trade || trade.status === 'SETTLED') return trade;
   const endAt = Number(trade.start_at) + Number(trade.duration_seconds);
   if (now < endAt) return trade;
-  const exitPrice = simulatedPrice(trade, endAt);
+  const exitPrice = simulatedPrice({ ...trade, direction: trade.round_direction }, endAt);
   const investment = Number(trade.investment);
   const gross = trade.result === 'WIN' ? investment * Number(trade.profit_pct) / 100 : 0;
   const fee = trade.result === 'WIN' ? investment * Number(trade.fee_pct) / 100 : 0;
   const net = Math.max(0, gross - fee);
   const wallet = await ensureWallet(env, trade.user_id);
-  const nextBalance = Number(wallet.balance) + net;
+  const payout = investment + net;
+  const nextBalance = Number(wallet.balance) + payout;
   const settledAt = now;
   const walletTxId = crypto.randomUUID();
   const txType = trade.result === 'WIN' ? 'ROUND_PROFIT' : 'ROUND_SETTLEMENT';
   await env.DB.batch([
     env.DB.prepare("UPDATE round_trades SET exit_price = ?, gross_pnl = ?, fee = ?, net_pnl = ?, status = 'SETTLED', settled_at = ? WHERE id = ? AND status = 'LOCKED'").bind(exitPrice, gross, fee, net, settledAt, tradeId),
     env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(nextBalance, settledAt, trade.user_id),
-    env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, trade_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Completed', ?)").bind(walletTxId, trade.user_id, tradeId, txType, net, nextBalance, settledAt)
+    env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, trade_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Completed', ?)").bind(walletTxId, trade.user_id, tradeId, txType, payout, nextBalance, settledAt)
   ]);
   return await env.DB.prepare('SELECT * FROM round_trades WHERE id = ? LIMIT 1').bind(tradeId).first();
 }
@@ -136,6 +137,8 @@ route('GET', '/api/rounds', async ({ request, env }) => {
     balance = Number(wallet.balance);
     const active = await env.DB.prepare("SELECT id FROM round_trades WHERE user_id = ? AND status = 'LOCKED'").bind(session.session.user_id).all();
     for (const trade of active.results || []) await settleTrade(env, trade.id);
+    const settledWallet = await ensureWallet(env, session.session.user_id);
+    balance = Number(settledWallet.balance);
   }
   const latest = new Map();
   if (session.ok) {
@@ -169,21 +172,26 @@ route('POST', '/api/rounds/trade', async ({ request, env }) => {
   let input;
   try { input = await request.json(); } catch { return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 }); }
   const roundId = typeof input?.roundId === 'string' ? input.roundId : '';
-  const investment = Number(input?.investment);
-  if (!roundId || !Number.isFinite(investment) || investment <= 0) return Response.json({ ok: false, error: 'Round and investment are required' }, { status: 400 });
+  if (!roundId) return Response.json({ ok: false, error: 'Round is required' }, { status: 400 });
   const round = await env.DB.prepare('SELECT * FROM rounds WHERE id = ? LIMIT 1').bind(roundId).first();
   if (!round) return Response.json({ ok: false, error: 'Round not found' }, { status: 404 });
   const now = nowSec();
   if (stateForRound(round, now) !== 'ENTRY_OPEN') return Response.json({ ok: false, error: 'Entry window is closed' }, { status: 409 });
   const wallet = await ensureWallet(env, auth.session.user_id);
+  const available = Number(wallet.balance);
   const minBalance = MIN_BALANCES[round.round_no];
-  if (Number(wallet.balance) < minBalance) return Response.json({ ok: false, error: `Minimum wallet balance for Round ${round.round_no} is ${minBalance} USDT` }, { status: 403 });
+  if (available < minBalance) return Response.json({ ok: false, error: `Minimum wallet balance for Round ${round.round_no} is ${minBalance} USDT` }, { status: 403 });
   const activeTrade = await env.DB.prepare("SELECT id FROM round_trades WHERE user_id = ? AND round_id = ? AND status = 'LOCKED' LIMIT 1").bind(auth.session.user_id, round.id).first();
   if (activeTrade) return Response.json({ ok: false, error: 'You already have an active trade in this round' }, { status: 409 });
+  const investment = available;
   const tradeId = crypto.randomUUID();
   const entryPrice = simulatedPrice(round, now);
-  await env.DB.prepare("INSERT INTO round_trades (id, user_id, round_id, investment, direction, entry_price, result, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'LOCKED', ?, ?)").bind(tradeId, auth.session.user_id, round.id, investment, round.direction, entryPrice, round.result, now, now).run();
-  return Response.json({ ok: true, trade: { id: tradeId, roundId: round.id, investment, direction: round.direction, entryPrice, result: round.result, status: 'LOCKED', startedAt: now } }, { status: 201 });
+  const result = await env.DB.batch([
+    env.DB.prepare('UPDATE wallet_accounts SET balance = 0, updated_at = ? WHERE user_id = ? AND balance = ?').bind(now, auth.session.user_id, available),
+    env.DB.prepare("INSERT INTO round_trades (id, user_id, round_id, investment, direction, entry_price, result, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'LOCKED', ?, ?)").bind(tradeId, auth.session.user_id, round.id, investment, round.direction, entryPrice, round.result, now, now)
+  ]);
+  if (!result?.[0]?.meta?.changes) return Response.json({ ok: false, error: 'Balance changed. Please try again.' }, { status: 409 });
+  return Response.json({ ok: true, trade: { id: tradeId, roundId: round.id, investment, direction: round.direction, entryPrice, result: round.result, status: 'LOCKED', startedAt: now }, balance: 0 }, { status: 201 });
 });
 
 route('GET', '/api/admin/rounds', async ({ request, env }) => {
