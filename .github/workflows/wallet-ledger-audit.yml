@@ -2,8 +2,6 @@ name: Tradehub Wallet Ledger Audit
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   audit:
