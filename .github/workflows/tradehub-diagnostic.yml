@@ -1,6 +1,13 @@
 name: Tradehub Production Diagnostic
 
 on:
+  push:
+    branches:
+      - main
+      - fix/home-controller-cleanup
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
