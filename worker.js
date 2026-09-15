@@ -15,33 +15,24 @@ export default {
         method: 'GET',
         headers: request.headers,
       });
-      return withActivityFeed(await env.ASSETS.fetch(indexRequest), env, url.pathname);
+      return withClientUi(await env.ASSETS.fetch(indexRequest));
     }
 
     const response = await env.ASSETS.fetch(request);
-    if (['/withdrawal-ui.js', '/account-ui.js', '/activity-feed.js', '/home-title-fix.js', '/referral-ui.js', '/home-rules.js', '/home-cleanup.js', '/rounds-final-ui.js', '/rounds-live-fix.js'].includes(url.pathname)) {
+    if (['/withdrawal-ui.js', '/client-route-loader.js', '/account-ui.js', '/activity-feed.js', '/home-ui.js', '/referral-ui.js', '/rounds-final-ui.js', '/rounds-live-fix.js'].includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
     }
-    if (url.pathname === '/' || url.pathname === '/index.html') return withActivityFeed(response, env, url.pathname);
+    if (url.pathname === '/' || url.pathname === '/index.html') return withClientUi(response);
     return response;
   }
 };
 
-async function withActivityFeed(response, env, pathname = '/') {
+async function withClientUi(response) {
   const html = await response.text();
-  const scripts = [];
-  const isHome = pathname === '/' || pathname === '/index.html';
-  const isRounds = pathname === '/rounds' || pathname === '/rounds/';
-  if (isHome && !html.includes('/activity-feed.js')) scripts.push('<script src="/activity-feed.js?v=feed-v3" defer></script>');
-  if (isHome && !html.includes('/home-rules.js')) scripts.push('<script src="/home-rules.js?v=rules-v1" defer></script>');
-  if (isRounds && !html.includes('/rounds-final-ui.js')) scripts.push('<script src="/rounds-final-ui.js?v=rounds-final-v2" defer></script>');
-  if (isRounds && !html.includes('/rounds-live-fix.js')) scripts.push('<script src="/rounds-live-fix.js?v=rounds-live-v1" defer></script>');
-  if (!html.includes('/home-title-fix.js')) scripts.push('<script src="/home-title-fix.js" defer></script>');
-  if (pathname === '/referral' || pathname === '/referral/') scripts.push('<script src="/referral-ui.js" defer></script>');
-  if (!scripts.length) return new Response(html, response);
-  const updated = html.replace('</body>', scripts.join('') + '</body>');
+  if (html.includes('/client-route-loader.js')) return new Response(html, response);
+  const updated = html.replace('</body>', '<script src="/client-route-loader.js?v=route-v1" defer></script></body>');
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   headers.delete('content-length');
