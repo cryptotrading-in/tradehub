@@ -23,7 +23,9 @@
     loaded.add(clean);
     return new Promise(resolve=>{
       const s=document.createElement('script');
-      s.src=src;s.defer=true;s.onload=resolve;s.onerror=resolve;
+      s.src=src;
+      s.onload=resolve;
+      s.onerror=resolve;
       document.body.appendChild(s);
     });
   }
@@ -31,28 +33,21 @@
     const list=routes[route()]||[];
     return list.reduce((p,src)=>p.then(()=>load(src)),Promise.resolve());
   }
+  function notifyRoute(){
+    setTimeout(()=>sync().then(()=>window.dispatchEvent(new PopStateEvent('popstate'))),0);
+  }
   function closeMenuOnOutsideClick(e){
     const shell=document.querySelector('.client-shell');
     if(!shell?.classList.contains('menu-open'))return;
     if(e.target.closest?.('.sidebar,.mobile-menu'))return;
     shell.classList.remove('menu-open');
   }
-  if(!window.__tradehubRouteLoaderHooked){
-    window.__tradehubRouteLoaderHooked=true;
-    document.addEventListener('click',closeMenuOnOutsideClick,true);
-    ['pushState','replaceState'].forEach(name=>{
-      const original=history[name];
-      if(original.__tradehubRouteLoaderHook)return;
-      const wrapped=function(){
-        const result=original.apply(this,arguments);
-        setTimeout(()=>sync().then(()=>window.dispatchEvent(new PopStateEvent('popstate'))),0);
-        return result;
-      };
-      wrapped.__tradehubRouteLoaderHook=true;
-      history[name]=wrapped;
-    });
-    window.addEventListener('popstate',()=>setTimeout(sync,0));
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});
-    else sync();
-  }
+  if(window.__tradehubRouteLoaderHooked)return;
+  window.__tradehubRouteLoaderHooked=true;
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('[data-r]'))notifyRoute();
+    closeMenuOnOutsideClick(e);
+  },true);
+  window.addEventListener('popstate',()=>setTimeout(sync,0));
+  sync();
 })();

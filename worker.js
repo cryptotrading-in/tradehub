@@ -32,7 +32,7 @@ export default {
 async function withClientUi(response) {
   const html = await response.text();
   if (html.includes('/client-route-loader.js')) return new Response(html, response);
-  const updated = html.replace('</body>', '<script src="/client-route-loader.js?v=route-v1" defer></script></body>');
+  const updated = html.replace('</body>', '<script src="/client-route-loader.js?v=route-v2" defer></script></body>');
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   headers.delete('content-length');
