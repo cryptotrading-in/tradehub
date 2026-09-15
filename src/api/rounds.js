@@ -113,14 +113,21 @@ async function settleTrade(env, tradeId, now = nowSec()) {
   const gross = trade.result === 'WIN' ? investment * Number(trade.profit_pct) / 100 : 0;
   const fee = trade.result === 'WIN' ? investment * Number(trade.fee_pct) / 100 : 0;
   const net = Math.max(0, gross - fee);
-  const wallet = await ensureWallet(env, trade.user_id);
   const payout = investment + net;
-  const nextBalance = Number(wallet.balance) + payout;
   const settledAt = now;
   const walletTxId = crypto.randomUUID();
   const txType = trade.result === 'WIN' ? 'ROUND_PROFIT' : 'ROUND_SETTLEMENT';
+
+  // Claim the trade exactly once before crediting the wallet. Concurrent requests
+  // can both observe LOCKED, but only one can change it to SETTLED.
+  const claim = await env.DB.prepare("UPDATE round_trades SET exit_price = ?, gross_pnl = ?, fee = ?, net_pnl = ?, status = 'SETTLED', settled_at = ? WHERE id = ? AND status = 'LOCKED'").bind(exitPrice, gross, fee, net, settledAt, tradeId).run();
+  if (!claim?.meta?.changes) {
+    return await env.DB.prepare('SELECT * FROM round_trades WHERE id = ? LIMIT 1').bind(tradeId).first();
+  }
+
+  const wallet = await ensureWallet(env, trade.user_id);
+  const nextBalance = Number(wallet.balance) + payout;
   await env.DB.batch([
-    env.DB.prepare("UPDATE round_trades SET exit_price = ?, gross_pnl = ?, fee = ?, net_pnl = ?, status = 'SETTLED', settled_at = ? WHERE id = ? AND status = 'LOCKED'").bind(exitPrice, gross, fee, net, settledAt, tradeId),
     env.DB.prepare('UPDATE wallet_accounts SET balance = ?, updated_at = ? WHERE user_id = ?').bind(nextBalance, settledAt, trade.user_id),
     env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, trade_id, type, amount, balance_after, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Completed', ?)").bind(walletTxId, trade.user_id, tradeId, txType, payout, nextBalance, settledAt)
   ]);
