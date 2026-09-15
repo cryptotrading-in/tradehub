@@ -36,7 +36,6 @@ async function withActivityFeed(response, env, pathname = '/') {
   const isRounds = pathname === '/rounds' || pathname === '/rounds/';
   if (isHome && !html.includes('/activity-feed.js')) scripts.push('<script src="/activity-feed.js?v=feed-v3" defer></script>');
   if (isHome && !html.includes('/home-rules.js')) scripts.push('<script src="/home-rules.js?v=rules-v1" defer></script>');
-  if (isHome && !html.includes('/home-cleanup.js')) scripts.push('<script src="/home-cleanup.js?v=clean-v1" defer></script>');
   if (isRounds && !html.includes('/rounds-final-ui.js')) scripts.push('<script src="/rounds-final-ui.js?v=rounds-final-v2" defer></script>');
   if (isRounds && !html.includes('/rounds-live-fix.js')) scripts.push('<script src="/rounds-live-fix.js?v=rounds-live-v1" defer></script>');
   if (isRounds && !html.includes('/rounds-wallet-sync.js')) scripts.push('<script src="/rounds-wallet-sync.js?v=wallet-sync-v1" defer></script>');
